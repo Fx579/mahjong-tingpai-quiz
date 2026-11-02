@@ -94,7 +94,7 @@
 <body>
 <div class="wrap">
   <h1>🀄 麻将多面听牌挑战</h1>
-  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定</div>
+  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v2.2</span></div>
 
   <div id="startPanel" class="panel center">
     <p style="font-size:16px;margin-bottom:6px;">每局 <b style="color:var(--gold)">8 题</b>，含经典多面听牌型，限时作答评级。</p>
@@ -140,7 +140,7 @@
   </div>
 </div>
 
-<script src="engine.js?v=3"></script>
+<script src="engine.js?v=4"></script>
 <script>
 (function () {
   const E = window.MahjongEngine;
@@ -223,6 +223,7 @@
   function tileEl(id, extraCls) {
     const d = document.createElement('div');
     d.className = 'tile' + (extraCls ? ' ' + extraCls : '');
+    d.dataset.id = id;
     d.innerHTML = faceSVG(id);
     return d;
   }
