@@ -97,50 +97,57 @@
     return winStandard(counts) || winSevenPairs(counts) || winThirteenOrphans(counts);
   }
 
-  /* ---------- 胡牌拆解：返回面子分组（刻子/顺子/将/对） ---------- */
+  /* ---------- 胡牌拆解：枚举全部排列（刻子/顺子/将/对） ---------- */
 
-  function findMelds(c, groups) {
+  // 枚举把 c 全部拆成面子的所有分组方式（按最小剩余牌递归，天然去重）
+  function findAllMelds(c, cur, out) {
     let i = 0;
     while (i < 34 && c[i] === 0) i++;
-    if (i === 34) return true;
+    if (i === 34) { out.push(cur.slice()); return; }
     if (c[i] >= 3) {
-      c[i] -= 3; groups.push({ type: 'ke', tiles: [i, i, i] });
-      if (findMelds(c, groups)) return true;
-      groups.pop(); c[i] += 3;
+      c[i] -= 3; cur.push({ type: 'ke', tiles: [i, i, i] });
+      findAllMelds(c, cur, out);
+      cur.pop(); c[i] += 3;
     }
     if (i < 27 && i % 9 <= 6 && c[i + 1] > 0 && c[i + 2] > 0) {
       c[i]--; c[i + 1]--; c[i + 2]--;
-      groups.push({ type: 'shun', tiles: [i, i + 1, i + 2] });
-      if (findMelds(c, groups)) return true;
-      groups.pop(); c[i]++; c[i + 1]++; c[i + 2]++;
+      cur.push({ type: 'shun', tiles: [i, i + 1, i + 2] });
+      findAllMelds(c, cur, out);
+      cur.pop(); c[i]++; c[i + 1]++; c[i + 2]++;
     }
-    return false;
   }
 
-  // 14 张胡牌 → { form:'std'|'7pairs'|'kokushi', groups:[{type,tiles}] }；将/对排在最后
-  function decomposeWin(counts) {
-    if (winThirteenOrphans(counts)) return { form: 'kokushi', groups: null };
-    const c = counts.slice();
+  // 14 张胡牌 → [{ form:'std'|'7pairs'|'kokushi', groups:[{type,tiles}]|null }]
+  // 返回该胡牌的**所有**不同排列；将/对排在每组最后。
+  function decomposeAll(counts) {
+    const res = [];
+    if (winThirteenOrphans(counts)) res.push({ form: 'kokushi', groups: null });
+
+    const seen = new Set();
+    const c0 = counts.slice();
     for (let p = 0; p < 34; p++) {
-      if (c[p] >= 2) {
-        c[p] -= 2;
-        const melds = [];
-        if (findMelds(c, melds)) {
-          c[p] += 2;
-          return { form: 'std', groups: melds.concat([{ type: 'jiang', tiles: [p, p] }]) };
+      if (c0[p] >= 2) {
+        c0[p] -= 2;
+        const outs = [];
+        findAllMelds(c0, [], outs);
+        c0[p] += 2;
+        for (const melds of outs) {
+          const groups = melds.concat([{ type: 'jiang', tiles: [p, p] }]);
+          const sig = JSON.stringify(groups);
+          if (!seen.has(sig)) { seen.add(sig); res.push({ form: 'std', groups }); }
         }
-        c[p] += 2;
       }
     }
+
     if (winSevenPairs(counts)) {
       const groups = [];
       for (let i = 0; i < 34; i++) {
         if (counts[i] === 4) { groups.push({ type: 'dui', tiles: [i, i] }); groups.push({ type: 'dui', tiles: [i, i] }); }
         else if (counts[i] === 2) groups.push({ type: 'dui', tiles: [i, i] });
       }
-      return { form: '7pairs', groups };
+      res.push({ form: '7pairs', groups });
     }
-    return null;
+    return res;
   }
 
   /* ---------- 听牌 / 多面听 ---------- */
@@ -324,7 +331,7 @@
 
   const MahjongEngine = {
     NUM_CN, SUIT_CN, HONORS, TERMINALS_HONORS,
-    tileName, canWin, getWaits, waitLabel, decomposeWin,
+    tileName, canWin, getWaits, waitLabel, decomposeAll,
     makeQuestion, makeRound, mulberry32
   };
 
