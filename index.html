@@ -102,7 +102,7 @@
 <body>
 <div class="wrap">
   <h1>🀄 麻将多面听牌挑战</h1>
-  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v2.3</span></div>
+  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v2.5</span></div>
 
   <div id="startPanel" class="panel center">
     <p style="font-size:16px;margin-bottom:6px;">每局 <b style="color:var(--gold)">8 题</b>，含经典多面听牌型，限时作答评级。</p>
@@ -116,8 +116,8 @@
       听牌 = 13 张牌，再摸任意一张即可胡牌；等待的牌种 ≥ 2 种即为<b>多面听</b>
       （两面听、三面听、双碰、九面听……）。<br>
       作答时请点击所有你认为是听牌的选项牌，然后提交。
-      <h3 style="margin-top:8px;">耗时评级（每题从出题到提交）</h3>
-      ≤5s 顶级 · ≤10s 出色 · ≤15s 熟练 · ≤30s 一般 · &gt;30s 还需努力
+      <h3 style="margin-top:8px;">耗时评级（每题从出题到提交，仅答对计评级）</h3>
+      ≤5s 顶级 · ≤10s 出色 · ≤15s 熟练 · ≤30s 一般 · &gt;30s 还需努力；答错即"回答错误"
     </div>
     <button id="startBtn">开始挑战</button>
   </div>
@@ -148,7 +148,7 @@
   </div>
 </div>
 
-<script src="engine.js?v=5"></script>
+<script src="engine.js?v=6"></script>
 <script>
 (function () {
   const E = window.MahjongEngine;
@@ -309,11 +309,12 @@
     answered = true;
     stopTimer();
     const elapsed = (performance.now() - t0) / 1000;
-    const rt = rate(elapsed);
     const q = questions[qi];
     const waitSet = new Set(q.waits);
     const exact = selected.size === waitSet.size && [...selected].every(t => waitSet.has(t));
     if (exact) score++;
+    // 答错不给耗时评级，评价即"回答错误"
+    const rt = exact ? rate(elapsed) : ['回答错误', '#e74c3c'];
     results.push({ no: qi + 1, title: q.title, ok: exact, time: elapsed, rating: rt });
 
     document.querySelectorAll('.tile.opt').forEach(t => {
