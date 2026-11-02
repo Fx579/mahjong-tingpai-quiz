@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麻将多面听牌挑战</title>
+<style>
+  :root {
+    --felt: #0e6b3c;
+    --felt-dark: #074526;
+    --gold: #f5c542;
+    --tile-face: #fdfdf5;
+    --tile-side: #d8d8c8;
+    --ink: #1a2b3c;
+    --red: #c0392b;
+    --blue: #1f6fb0;
+    --green: #14713d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-dark) 100%);
+    min-height: 100vh; color: #fff; padding: 24px 12px 48px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { text-align: center; font-size: 30px; letter-spacing: 4px; color: var(--gold);
+       text-shadow: 0 2px 8px rgba(0,0,0,.4); margin-bottom: 6px; }
+  .sub { text-align: center; font-size: 13px; opacity: .85; margin-bottom: 20px; }
+
+  .panel {
+    background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.14);
+    border-radius: 14px; padding: 20px; margin-bottom: 16px;
+  }
+  .bar { display: flex; justify-content: space-between; align-items: center;
+         font-size: 14px; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .bar .tag { background: rgba(245,197,66,.15); border: 1px solid var(--gold);
+              color: var(--gold); border-radius: 999px; padding: 3px 12px; font-size: 13px; }
+
+  /* 麻将牌 */
+  .tile {
+    display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 46px; height: 62px; margin: 3px; border-radius: 7px; position: relative;
+    background: linear-gradient(160deg, #ffffff 0%, var(--tile-face) 55%, var(--tile-side) 100%);
+    box-shadow: 0 3px 0 #9a9a86, 0 5px 8px rgba(0,0,0,.35);
+    color: var(--ink); user-select: none; cursor: default;
+    font-weight: 700; line-height: 1.05;
+  }
+  .tile .num { font-size: 21px; }
+  .tile .suit { font-size: 15px; }
+  .tile.honor .num { font-size: 24px; }
+  .tile.s0 { color: var(--ink); }
+  .tile.s1 { color: var(--blue); }
+  .tile.s2 { color: var(--green); }
+  .tile.zhong { color: var(--red); }
+  .tile.fa { color: var(--green); }
+  .tile.bai { color: #7f8c8d; }
+
+  .hand-row { display: flex; flex-wrap: wrap; justify-content: center; padding: 6px 0 12px; }
+
+  /* 选项牌 */
+  .opts { display: flex; flex-wrap: wrap; justify-content: center; }
+  .tile.opt { cursor: pointer; transition: transform .12s, box-shadow .12s; }
+  .tile.opt:hover { transform: translateY(-4px); }
+  .tile.opt.sel { outline: 3px solid var(--gold); outline-offset: 2px; transform: translateY(-4px); }
+  .tile.opt.right { outline: 3px solid #2ecc71; outline-offset: 2px; }
+  .tile.opt.missed { outline: 3px dashed #2ecc71; outline-offset: 2px; opacity: .95; }
+  .tile.opt.wrong { outline: 3px solid var(--red); outline-offset: 2px; opacity: .8; }
+  .tile.opt.dim { opacity: .45; }
+
+  button {
+    background: var(--gold); color: #33270a; border: none; border-radius: 8px;
+    padding: 10px 26px; font-size: 16px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 3px 0 #b8901f; transition: transform .1s;
+  }
+  button:hover { transform: translateY(-2px); }
+  button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+  button.ghost { background: transparent; color: var(--gold); border: 1px solid var(--gold); box-shadow: none; }
+
+  .center { text-align: center; }
+  .feedback { margin-top: 14px; padding: 12px 14px; border-radius: 10px; font-size: 15px; display: none; }
+  .feedback.ok { display: block; background: rgba(46,204,113,.18); border: 1px solid #2ecc71; }
+  .feedback.no { display: block; background: rgba(231,76,60,.18); border: 1px solid #e74c3c; }
+  .feedback .waits { color: var(--gold); font-weight: 700; }
+
+  .score-line b { color: var(--gold); font-size: 18px; }
+  .q-title { color: var(--gold); font-weight: 700; }
+  #startPanel .rules { font-size: 13.5px; line-height: 1.9; opacity: .92; text-align: left;
+                       background: rgba(0,0,0,.2); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+  #startPanel .rules h3 { color: var(--gold); font-size: 14px; margin-bottom: 4px; }
+  .final { font-size: 20px; margin-bottom: 14px; }
+  @media (max-width: 640px) { .tile { width: 38px; height: 52px; } .tile .num { font-size: 17px; } .tile .suit { font-size: 12px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🀄 麻将多面听牌挑战</h1>
+  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定</div>
+
+  <div id="startPanel" class="panel center">
+    <p style="font-size:16px;margin-bottom:6px;">每局 <b style="color:var(--gold)">8 题</b>，含九莲宝灯、十三幺等经典多面听牌型。</p>
+    <div class="rules">
+      <h3>判定规则</h3>
+      胡牌 = 4 组面子（顺子/刻子）+ 1 对将，或 七对，或 十三幺。<br>
+      听牌 = 13 张牌，再摸任意一张即可胡牌；等待的牌种 ≥ 2 种即为<b>多面听</b>
+      （两面听、三面听、双碰、九面听……）。<br>
+      作答时请点击所有你认为是听牌的选项牌，然后提交。
+    </div>
+    <button id="startBtn">开始挑战</button>
+  </div>
+
+  <div id="gamePanel" class="panel" style="display:none">
+    <div class="bar">
+      <span>第 <b id="qNo">1</b> / <span id="qTotal">8</span> 题 <span id="qTitle" class="q-title"></span></span>
+      <span class="tag" id="diffTag"></span>
+      <span class="score-line">得分 <b id="score">0</b></span>
+    </div>
+    <div class="center">
+      <div style="font-size:13px;opacity:.8;margin-bottom:2px;">当前手牌（13 张，已听牌）</div>
+      <div class="hand-row" id="hand"></div>
+      <div style="font-size:13px;opacity:.8;margin:6px 0 2px;">👇 点击选择所有听的牌（可多选）</div>
+      <div class="opts" id="opts"></div>
+      <div style="margin-top:14px;">
+        <button id="submitBtn">提交答案</button>
+        <button id="nextBtn" class="ghost" style="display:none">下一题 →</button>
+      </div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+  </div>
+
+  <div id="endPanel" class="panel center" style="display:none">
+    <div class="final" id="finalText"></div>
+    <button id="restartBtn">再来一局</button>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  const E = window.MahjongEngine;
+  const $ = id => document.getElementById(id);
+  const TOTAL = 8;
+  let questions = [], qi = 0, score = 0, selected = new Set(), answered = false;
+
+  function tileEl(id, extraCls) {
+    const d = document.createElement('div');
+    const suit = id < 27 ? (id / 9) | 0 : -1;
+    const num = E.NUM_CN[id % 9];
+    d.className = 'tile ' + (suit >= 0 ? 's' + suit : 'honor');
+    if (id === 31) d.classList.add('zhong');
+    if (id === 32) d.classList.add('fa');
+    if (id === 33) d.classList.add('bai');
+    if (extraCls) d.classList.add(extraCls);
+    if (suit >= 0) {
+      d.innerHTML = '<span class="num">' + num + '</span><span class="suit">' + E.SUIT_CN[suit] + '</span>';
+    } else {
+      d.innerHTML = '<span class="num">' + E.HONORS[id - 27] + '</span>';
+    }
+    return d;
+  }
+
+  function start() {
+    questions = E.makeRound(TOTAL, Date.now() & 0x7fffffff);
+    qi = 0; score = 0;
+    $('startPanel').style.display = 'none';
+    $('endPanel').style.display = 'none';
+    $('gamePanel').style.display = 'block';
+    render();
+  }
+
+  function render() {
+    const q = questions[qi];
+    selected.clear(); answered = false;
+    $('qNo').textContent = qi + 1;
+    $('qTotal').textContent = questions.length;
+    $('score').textContent = score;
+    $('qTitle').textContent = q.title ? '· ' + q.title : '';
+    $('diffTag').textContent = q.label;
+    $('feedback').className = 'feedback';
+    $('feedback').innerHTML = '';
+    $('submitBtn').style.display = 'inline-block';
+    $('submitBtn').disabled = false;
+    $('nextBtn').style.display = 'none';
+
+    const hand = $('hand'); hand.innerHTML = '';
+    q.hand.forEach(id => hand.appendChild(tileEl(id)));
+
+    const opts = $('opts'); opts.innerHTML = '';
+    q.options.forEach(id => {
+      const t = tileEl(id, 'opt');
+      t.dataset.id = id;
+      t.addEventListener('click', () => {
+        if (answered) return;
+        if (selected.has(id)) { selected.delete(id); t.classList.remove('sel'); }
+        else { selected.add(id); t.classList.add('sel'); }
+      });
+      opts.appendChild(t);
+    });
+  }
+
+  function submit() {
+    if (answered || selected.size === 0) return;
+    answered = true;
+    const q = questions[qi];
+    const waitSet = new Set(q.waits);
+    const exact = selected.size === waitSet.size && [...selected].every(t => waitSet.has(t));
+    if (exact) score++;
+
+    document.querySelectorAll('.tile.opt').forEach(t => {
+      const id = +t.dataset.id;
+      t.classList.remove('sel');
+      if (waitSet.has(id)) t.classList.add(selected.has(id) ? 'right' : 'missed');
+      else if (selected.has(id)) t.classList.add('wrong');
+      else t.classList.add('dim');
+    });
+
+    const fb = $('feedback');
+    const names = q.waits.map(E.tileName).join('、');
+    if (exact) {
+      fb.className = 'feedback ok';
+      fb.innerHTML = '✅ 回答正确！该手牌听 <span class="waits">' + names + '</span>（' + q.label + '）';
+    } else {
+      fb.className = 'feedback no';
+      fb.innerHTML = '❌ 不对。正确答案：听 <span class="waits">' + names + '</span>（' + q.label + '）<br>' +
+        '<span style="font-size:13px;opacity:.85;">提示：绿框=漏选，红框=多选，暗色=未选中的干扰项</span>';
+    }
+    $('submitBtn').style.display = 'none';
+    $('nextBtn').style.display = 'inline-block';
+    $('score').textContent = score;
+  }
+
+  function next() {
+    qi++;
+    if (qi >= questions.length) {
+      $('gamePanel').style.display = 'none';
+      $('endPanel').style.display = 'block';
+      const pct = Math.round(score / questions.length * 100);
+      let word = pct === 100 ? '🏆 雀圣！全部答对！'
+        : pct >= 75 ? '🎉 高手！听牌嗅觉敏锐！'
+        : pct >= 50 ? '👍 不错，再多练练牌感。'
+        : '📖 继续琢磨，多面听就在身边。';
+      $('finalText').innerHTML = '本轮得分 <b style="color:var(--gold)">' + score + ' / ' + questions.length + '</b><br>' + word;
+    } else render();
+  }
+
+  $('startBtn').addEventListener('click', start);
+  $('restartBtn').addEventListener('click', start);
+  $('submitBtn').addEventListener('click', submit);
+  $('nextBtn').addEventListener('click', next);
+})();
+</script>
+</body>
+</html>
