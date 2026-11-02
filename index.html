@@ -86,6 +86,7 @@
   .dTag { font-size: 13px; opacity: .85; }
   .dRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .dW { min-width: 68px; font-weight: 700; color: var(--gold); font-size: 14px; }
+  .dF { min-width: 76px; font-size: 12.5px; color: #cfe8ff; opacity: .95; }
   .grp { display: flex; gap: 2px; padding: 3px; background: rgba(255,255,255,.12); border-radius: 5px; }
   .grp.jg { background: rgba(245,197,66,.22); }
   .mt { width: 27px; height: 37px; background: #fdfdf5; border-radius: 3px; box-shadow: 0 1px 0 #9a9a86; }
@@ -102,7 +103,7 @@
 <body>
 <div class="wrap">
   <h1>🀄 麻将多面听牌挑战</h1>
-  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v2.5</span></div>
+  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v2.6</span></div>
 
   <div id="startPanel" class="panel center">
     <p style="font-size:16px;margin-bottom:6px;">每局 <b style="color:var(--gold)">8 题</b>，含经典多面听牌型，限时作答评级。</p>
@@ -117,7 +118,7 @@
       （两面听、三面听、双碰、九面听……）。<br>
       作答时请点击所有你认为是听牌的选项牌，然后提交。
       <h3 style="margin-top:8px;">耗时评级（每题从出题到提交，仅答对计评级）</h3>
-      ≤5s 顶级 · ≤10s 出色 · ≤15s 熟练 · ≤30s 一般 · &gt;30s 还需努力；答错即"回答错误"
+      ≤5s 顶级 · ≤10s 出色 · ≤15s 熟练 · ≤30s 一般 · &gt;30s 还需努力；答错不评级，仅显示用时与正确答案
     </div>
     <button id="startBtn">开始挑战</button>
   </div>
@@ -148,7 +149,7 @@
   </div>
 </div>
 
-<script src="engine.js?v=6"></script>
+<script src="engine.js?v=7"></script>
 <script>
 (function () {
   const E = window.MahjongEngine;
@@ -236,20 +237,35 @@
     return d;
   }
 
-  // 每个听牌张给出具体胡牌排列：一组=一副面子，组间留间隔，将/对高亮在最后
+  // 每个听牌张给出全部胡牌排列：一组=一副面子，组间留间隔，将/对高亮；同型多解加序号
+  const FORM_CN = { std: '标准型', '7pairs': '七对', kokushi: '十三幺' };
+  const CIRC = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫';
   function decompHTML(q) {
     let html = '<div class="decomp"><div class="dTag">胡牌排列（每组一副，金色组为将/对）：</div>';
     for (const w of q.waits) {
       const c = q.counts.slice(); c[w]++;
-      const d = E.decomposeWin(c);
-      html += '<div class="dRow"><span class="dW">摸 ' + E.tileName(w) + '</span>';
-      if (d && d.form === 'kokushi') html += '<span class="dTag">十三幺（幺九字牌各一张 + 一对）</span>';
-      else if (d) for (const g of d.groups) {
-        const jg = (g.type === 'jiang' || g.type === 'dui') ? ' jg' : '';
-        html += '<span class="grp' + jg + '">' +
-          g.tiles.map(t => '<div class="mt">' + faceSVG(t) + '</div>').join('') + '</span>';
+      const ds = E.decomposeAll(c);
+      html += '<div class="dRow"><span class="dW">摸 ' + E.tileName(w) + '</span>' +
+              '<span class="dTag">' + ds.length + ' 种排列：</span></div>';
+      const perForm = {};
+      ds.forEach(d => { perForm[d.form] = (perForm[d.form] || 0) + 1; });
+      const cur = {};
+      for (const d of ds) {
+        cur[d.form] = (cur[d.form] || 0) + 1;
+        let label = FORM_CN[d.form];
+        if (perForm[d.form] > 1) label += CIRC[cur[d.form] - 1];
+        html += '<div class="dRow"><span class="dF">' + label + '</span>';
+        if (d.form === 'kokushi') {
+          html += '<span class="dTag">十三幺（幺九字牌各一张 + 一对）</span>';
+        } else {
+          for (const g of d.groups) {
+            const jg = (g.type === 'jiang' || g.type === 'dui') ? ' jg' : '';
+            html += '<span class="grp' + jg + '">' +
+              g.tiles.map(t => '<div class="mt">' + faceSVG(t) + '</div>').join('') + '</span>';
+          }
+        }
+        html += '</div>';
       }
-      html += '</div>';
     }
     return html + '</div>';
   }
@@ -313,8 +329,8 @@
     const waitSet = new Set(q.waits);
     const exact = selected.size === waitSet.size && [...selected].every(t => waitSet.has(t));
     if (exact) score++;
-    // 答错不给耗时评级，评价即"回答错误"
-    const rt = exact ? rate(elapsed) : ['回答错误', '#e74c3c'];
+    // 答错不给耗时评级（不出现顶级等评价），仅记录用时
+    const rt = exact ? rate(elapsed) : null;
     results.push({ no: qi + 1, title: q.title, ok: exact, time: elapsed, rating: rt });
 
     document.querySelectorAll('.tile.opt').forEach(t => {
@@ -327,14 +343,15 @@
 
     const fb = $('feedback');
     const names = q.waits.map(E.tileName).join('、');
-    const timeHtml = '<br>⏱ 用时 <b>' + elapsed.toFixed(1) + 's</b> · 评级 <span class="rating" style="color:' + rt[2] + '">' + rt[1] + '</span>';
+    const timeHtml = '<br>⏱ 用时 <b>' + elapsed.toFixed(1) + 's</b>' +
+      (exact ? ' · 评级 <span class="rating" style="color:' + rt[2] + '">' + rt[1] + '</span>' : '');
     const decomp = decompHTML(q);
     if (exact) {
       fb.className = 'feedback ok';
       fb.innerHTML = '✅ 回答正确！该手牌听 <span class="waits">' + names + '</span>（' + q.label + '）' + timeHtml + decomp;
     } else {
       fb.className = 'feedback no';
-      fb.innerHTML = '❌ 不对。正确答案：听 <span class="waits">' + names + '</span>（' + q.label + '）' + timeHtml + decomp + '<br>' +
+      fb.innerHTML = '❌ 回答错误。正确答案：听 <span class="waits">' + names + '</span>（' + q.label + '）' + timeHtml + decomp + '<br>' +
         '<span style="font-size:13px;opacity:.85;">提示：绿框=漏选，红框=多选，暗色=未选中的干扰项</span>';
     }
     $('submitBtn').style.display = 'none';
@@ -349,14 +366,15 @@
       $('endPanel').style.display = 'block';
       const pct = Math.round(score / questions.length * 100);
       const avg = results.reduce((s, r) => s + r.time, 0) / results.length;
-      const fast = results.filter(r => r.time <= 5).length;
+      const fast = results.filter(r => r.ok && r.time <= 5).length;
       let word = pct === 100 ? '🏆 雀圣！全部答对！'
         : pct >= 75 ? '🎉 高手！听牌嗅觉敏锐！'
         : pct >= 50 ? '👍 不错，再多练练牌感。'
         : '📖 继续琢磨，多面听就在身边。';
       let sum = results.map(r =>
         '第' + r.no + '题 ' + (r.title ? r.title + ' ' : '') + (r.ok ? '✅' : '❌') +
-        ' ' + r.time.toFixed(1) + 's <span class="rating" style="color:' + r.rating[2] + '">' + r.rating[1] + '</span>'
+        ' ' + r.time.toFixed(1) + 's' +
+        (r.ok ? ' <span class="rating" style="color:' + r.rating[2] + '">' + r.rating[1] + '</span>' : '')
       ).join('<br>');
       $('finalText').innerHTML = '本轮得分 <b style="color:var(--gold)">' + score + ' / ' + questions.length + '</b><br>' +
         '平均用时 ' + avg.toFixed(1) + 's · 顶级反应 ' + fast + ' 题<br>' + word +
