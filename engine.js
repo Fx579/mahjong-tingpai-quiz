@@ -136,33 +136,42 @@
     return tiles;
   }
 
-  // 随机生成一手 14 张的胡牌
-  function genWinningCounts(rng) {
+  // 随机生成一手 14 张的胡牌；suit 为 0/1/2 时限定单一花色（困难），null 为混花色（一般）
+  function genWinningCounts(rng, suit) {
     const kind = rng();
     const c = new Array(34).fill(0);
-    if (kind < 0.04) { // 十三幺
+    const lo = suit == null ? 0 : suit * 9;
+    const hi = suit == null ? 33 : suit * 9 + 8;
+    if (suit == null && kind < 0.04) { // 十三幺（仅混花色）
       const dup = TERMINALS_HONORS[randInt(rng, 0, 12)];
       for (const t of TERMINALS_HONORS) c[t]++;
       c[dup]++;
       return c;
     }
-    if (kind < 0.18) { // 七对
-      const pool = shuffle(rng, Array.from({ length: 34 }, (_, i) => i));
+    if (kind < 0.16) { // 七对
+      const pool = shuffle(rng, Array.from({ length: hi - lo + 1 }, (_, i) => lo + i));
+      if (pool.length < 7) return null;
       for (let i = 0; i < 7; i++) c[pool[i]] += 2;
       return c;
     }
     // 4 面子 + 1 将
-    c[randInt(rng, 0, 33)] += 2;
+    c[randInt(rng, lo, hi)] += 2;
     let guard = 0;
     for (let m = 0; m < 4; m++) {
       let placed = false;
       while (!placed && guard++ < 200) {
         if (rng() < 0.45) { // 刻子
-          const t = randInt(rng, 0, 33);
+          const t = randInt(rng, lo, hi);
           if (c[t] <= 1) { c[t] += 3; placed = true; }
         } else {           // 顺子
-          const s = randInt(rng, 0, 26);
-          if (s % 9 <= 6 && c[s] <= 3 && c[s + 1] <= 3 && c[s + 2] <= 3) {
+          let s;
+          if (suit == null) {
+            s = randInt(rng, 0, 26);
+            if (s % 9 > 6) continue;
+          } else {
+            s = randInt(rng, lo, lo + 6);
+          }
+          if (c[s] <= 3 && c[s + 1] <= 3 && c[s + 2] <= 3) {
             c[s]++; c[s + 1]++; c[s + 2]++; placed = true;
           }
         }
@@ -173,9 +182,9 @@
   }
 
   // 从胡牌中打掉一张，得到多面听的 13 张手牌
-  function genTingHand(rng, minW = 2, maxW = 8, maxTries = 400) {
+  function genTingHand(rng, suit, minW = 2, maxW = 8, maxTries = 400) {
     for (let i = 0; i < maxTries; i++) {
-      const w = genWinningCounts(rng);
+      const w = genWinningCounts(rng, suit);
       if (!w) continue;
       const order = shuffle(rng, [...new Set(expand(w))]);
       for (const t of order) {
@@ -206,14 +215,14 @@
     return n + ' 面听';
   }
 
-  // 经典多面听牌型
+  // 经典多面听牌型（九莲宝灯为纯花色 → 困难；十三幺混花色 → 一般）
   const CURATED = [
-    { key: 'jiulian', name: '九莲宝灯', counts: (() => {
+    { key: 'jiulian', name: '九莲宝灯', diff: 'hard', counts: (() => {
         const c = new Array(34).fill(0);
         c[0] = 3; for (let i = 1; i <= 7; i++) c[i] = 1; c[8] = 3;
         return c;
       })() },
-    { key: 'shisanyao', name: '十三幺', counts: (() => {
+    { key: 'shisanyao', name: '十三幺', diff: 'normal', counts: (() => {
         const c = new Array(34).fill(0);
         for (const t of TERMINALS_HONORS) c[t] = 1;
         return c;
@@ -232,8 +241,8 @@
     };
   }
 
-  function makeQuestion(rng) {
-    const g = genTingHand(rng);
+  function makeQuestion(rng, suit) {
+    const g = genTingHand(rng, suit);
     if (!g) return null;
     return {
       title: null,
@@ -245,14 +254,16 @@
     };
   }
 
-  // 一轮题目：经典牌型 + 随机多面听，去重后打乱
-  function makeRound(count, seed) {
+  // 一轮题目：难度 'normal'=混花色，'hard'=同一花色；经典牌型 + 随机多面听，去重后打乱
+  function makeRound(count, seed, difficulty) {
     const rng = mulberry32(seed);
-    const qs = CURATED.map(curatedQuestion);
+    const diff = difficulty === 'hard' ? 'hard' : 'normal';
+    const qs = CURATED.filter(it => it.diff === diff).map(curatedQuestion);
     const seen = new Set(qs.map(q => q.hand.join(',')));
     let guard = 0;
     while (qs.length < count && guard++ < 200) {
-      const q = makeQuestion(rng);
+      const suit = diff === 'hard' ? randInt(rng, 0, 2) : null;
+      const q = makeQuestion(rng, suit);
       if (!q) continue;
       const sig = q.hand.join(',');
       if (seen.has(sig)) continue;
