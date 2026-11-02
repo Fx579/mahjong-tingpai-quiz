@@ -103,13 +103,14 @@
 <body>
 <div class="wrap">
   <h1>🀄 麻将多面听牌挑战</h1>
-  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v2.6</span></div>
+  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v2.7</span></div>
 
   <div id="startPanel" class="panel center">
     <p style="font-size:16px;margin-bottom:6px;">每局 <b style="color:var(--gold)">8 题</b>，含经典多面听牌型，限时作答评级。</p>
     <div class="diffSel">
       <button id="diffNormal" class="active">一般<small>混花色 · 含十三幺</small></button>
       <button id="diffHard">困难<small>同一花色 · 含九莲宝灯</small></button>
+      <button id="diffHell">地狱<small>同困难 · 不提示几面听</small></button>
     </div>
     <div class="rules">
       <h3>判定规则</h3>
@@ -271,7 +272,8 @@
   }
 
   function start() {
-    questions = E.makeRound(TOTAL, Date.now() & 0x7fffffff, difficulty);
+    // 地狱 = 困难出题规则（同花色、含九莲宝灯），只是不提示面数
+    questions = E.makeRound(TOTAL, Date.now() & 0x7fffffff, difficulty === 'hell' ? 'hard' : difficulty);
     qi = 0; score = 0; results = [];
     $('startPanel').style.display = 'none';
     $('endPanel').style.display = 'none';
@@ -295,8 +297,14 @@
     $('qNo').textContent = qi + 1;
     $('qTotal').textContent = questions.length;
     $('score').textContent = score;
-    $('qTitle').textContent = q.title ? '· ' + q.title : '';
-    $('diffTag').textContent = (difficulty === 'hard' ? '困难·同花色 ' : '一般·混花色 ') + q.label;
+    if (difficulty === 'hell') {
+      // 不提示几面听，也不显示牌型名（如"九莲宝灯"会暗示九面）
+      $('qTitle').textContent = '';
+      $('diffTag').textContent = '地狱·同花色·盲猜';
+    } else {
+      $('qTitle').textContent = q.title ? '· ' + q.title : '';
+      $('diffTag').textContent = (difficulty === 'hard' ? '困难·同花色 ' : '一般·混花色 ') + q.label;
+    }
     $('feedback').className = 'feedback';
     $('feedback').innerHTML = '';
     $('submitBtn').style.display = 'inline-block';
@@ -386,9 +394,11 @@
     difficulty = d;
     $('diffNormal').classList.toggle('active', d === 'normal');
     $('diffHard').classList.toggle('active', d === 'hard');
+    $('diffHell').classList.toggle('active', d === 'hell');
   }
   $('diffNormal').addEventListener('click', () => setDiff('normal'));
   $('diffHard').addEventListener('click', () => setDiff('hard'));
+  $('diffHell').addEventListener('click', () => setDiff('hell'));
   $('startBtn').addEventListener('click', start);
   $('restartBtn').addEventListener('click', start);
   $('submitBtn').addEventListener('click', submit);
