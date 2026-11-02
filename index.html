@@ -82,6 +82,14 @@
   .diffSel button small { display: block; font-size: 11px; opacity: .8; }
   #timer { font-variant-numeric: tabular-nums; }
   .rating { font-weight: 700; }
+  .decomp { margin-top: 10px; display: flex; flex-direction: column; gap: 7px; }
+  .dTag { font-size: 13px; opacity: .85; }
+  .dRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .dW { min-width: 68px; font-weight: 700; color: var(--gold); font-size: 14px; }
+  .grp { display: flex; gap: 2px; padding: 3px; background: rgba(255,255,255,.12); border-radius: 5px; }
+  .grp.jg { background: rgba(245,197,66,.22); }
+  .mt { width: 27px; height: 37px; background: #fdfdf5; border-radius: 3px; box-shadow: 0 1px 0 #9a9a86; }
+  .mt svg { width: 100%; height: 100%; display: block; }
   .sumList { font-size: 13.5px; line-height: 2; margin: 10px auto 16px; display: inline-block; text-align: left; }
   .q-title { color: var(--gold); font-weight: 700; }
   #startPanel .rules { font-size: 13.5px; line-height: 1.9; opacity: .92; text-align: left;
@@ -94,7 +102,7 @@
 <body>
 <div class="wrap">
   <h1>🀄 麻将多面听牌挑战</h1>
-  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v2.2</span></div>
+  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v2.3</span></div>
 
   <div id="startPanel" class="panel center">
     <p style="font-size:16px;margin-bottom:6px;">每局 <b style="color:var(--gold)">8 题</b>，含经典多面听牌型，限时作答评级。</p>
@@ -140,7 +148,7 @@
   </div>
 </div>
 
-<script src="engine.js?v=4"></script>
+<script src="engine.js?v=5"></script>
 <script>
 (function () {
   const E = window.MahjongEngine;
@@ -228,6 +236,24 @@
     return d;
   }
 
+  // 每个听牌张给出具体胡牌排列：一组=一副面子，组间留间隔，将/对高亮在最后
+  function decompHTML(q) {
+    let html = '<div class="decomp"><div class="dTag">胡牌排列（每组一副，金色组为将/对）：</div>';
+    for (const w of q.waits) {
+      const c = q.counts.slice(); c[w]++;
+      const d = E.decomposeWin(c);
+      html += '<div class="dRow"><span class="dW">摸 ' + E.tileName(w) + '</span>';
+      if (d && d.form === 'kokushi') html += '<span class="dTag">十三幺（幺九字牌各一张 + 一对）</span>';
+      else if (d) for (const g of d.groups) {
+        const jg = (g.type === 'jiang' || g.type === 'dui') ? ' jg' : '';
+        html += '<span class="grp' + jg + '">' +
+          g.tiles.map(t => '<div class="mt">' + faceSVG(t) + '</div>').join('') + '</span>';
+      }
+      html += '</div>';
+    }
+    return html + '</div>';
+  }
+
   function start() {
     questions = E.makeRound(TOTAL, Date.now() & 0x7fffffff, difficulty);
     qi = 0; score = 0; results = [];
@@ -301,12 +327,13 @@
     const fb = $('feedback');
     const names = q.waits.map(E.tileName).join('、');
     const timeHtml = '<br>⏱ 用时 <b>' + elapsed.toFixed(1) + 's</b> · 评级 <span class="rating" style="color:' + rt[2] + '">' + rt[1] + '</span>';
+    const decomp = decompHTML(q);
     if (exact) {
       fb.className = 'feedback ok';
-      fb.innerHTML = '✅ 回答正确！该手牌听 <span class="waits">' + names + '</span>（' + q.label + '）' + timeHtml;
+      fb.innerHTML = '✅ 回答正确！该手牌听 <span class="waits">' + names + '</span>（' + q.label + '）' + timeHtml + decomp;
     } else {
       fb.className = 'feedback no';
-      fb.innerHTML = '❌ 不对。正确答案：听 <span class="waits">' + names + '</span>（' + q.label + '）' + timeHtml + '<br>' +
+      fb.innerHTML = '❌ 不对。正确答案：听 <span class="waits">' + names + '</span>（' + q.label + '）' + timeHtml + decomp + '<br>' +
         '<span style="font-size:13px;opacity:.85;">提示：绿框=漏选，红框=多选，暗色=未选中的干扰项</span>';
     }
     $('submitBtn').style.display = 'none';
