@@ -45,15 +45,7 @@
     color: var(--ink); user-select: none; cursor: default;
     font-weight: 700; line-height: 1.05;
   }
-  .tile .num { font-size: 21px; }
-  .tile .suit { font-size: 15px; }
-  .tile.honor .num { font-size: 24px; }
-  .tile.s0 { color: var(--ink); }
-  .tile.s1 { color: var(--blue); }
-  .tile.s2 { color: var(--green); }
-  .tile.zhong { color: var(--red); }
-  .tile.fa { color: var(--green); }
-  .tile.bai { color: #7f8c8d; }
+  .tile svg { width: 100%; height: 100%; display: block; }
 
   .hand-row { display: flex; flex-wrap: wrap; justify-content: center; padding: 6px 0 12px; }
 
@@ -148,7 +140,7 @@
   </div>
 </div>
 
-<script src="engine.js?v=2"></script>
+<script src="engine.js?v=3"></script>
 <script>
 (function () {
   const E = window.MahjongEngine;
@@ -166,20 +158,72 @@
   ];
   function rate(t) { for (const r of RATINGS) if (t <= r[0]) return r; return RATINGS[4]; }
 
+  /* 仿真牌面 SVG：筒=圆圈阵列 条=竹条阵列 万=汉字+萬 字牌=书法 */
+  const C = { B: '#2471a3', G: '#1e8449', R: '#c0392b', K: '#1a2b3c' };
+  const DOT_POS = [
+    [[20,28,11]],
+    [[20,15,6.5,'B'],[20,41,6.5,'G']],
+    [[10,12,6,'B'],[20,28,6,'G'],[30,44,6,'B']],
+    [[12,15,6.5,'G'],[28,15,6.5,'B'],[12,41,6.5,'B'],[28,41,6.5,'G']],
+    [[11,13,6,'B'],[29,13,6,'G'],[20,28,6,'R'],[11,43,6,'G'],[29,43,6,'B']],
+    [[12,12,5.5,'B'],[28,12,5.5,'G'],[12,28,5.5,'G'],[28,28,5.5,'B'],[12,44,5.5,'B'],[28,44,5.5,'G']],
+    [[10,10,5,'R'],[20,15,5,'R'],[30,20,5,'R'],[12,34,5,'B'],[28,34,5,'G'],[12,46,5,'G'],[28,46,5,'B']],
+    [[12,9,5,'B'],[28,9,5,'G'],[12,21,5,'G'],[28,21,5,'B'],[12,33,5,'B'],[28,33,5,'G'],[12,45,5,'G'],[28,45,5,'B']],
+    [[9,11,5.5,'G'],[20,11,5.5,'G'],[31,11,5.5,'G'],[9,28,5.5,'B'],[20,28,5.5,'B'],[31,28,5.5,'B'],[9,45,5.5,'R'],[20,45,5.5,'R'],[31,45,5.5,'R']]
+  ];
+  const STK_POS = [
+    [[20,28,9,32]],
+    [[20,15,5.5,13],[20,41,5.5,13]],
+    [[20,12,5.5,12],[12,40,5.5,12],[28,40,5.5,12]],
+    [[12,15,5.5,13],[28,15,5.5,13],[12,41,5.5,13],[28,41,5.5,13]],
+    [[11,13,5.5,12],[29,13,5.5,12],[20,28,5.5,12],[11,43,5.5,12],[29,43,5.5,12]],
+    [[10,14,5.5,12],[20,14,5.5,12],[30,14,5.5,12],[10,42,5.5,12],[20,42,5.5,12],[30,42,5.5,12]],
+    [[20,10,5.5,11],[10,29,5.5,11],[20,29,5.5,11],[30,29,5.5,11],[10,46,5.5,11],[20,46,5.5,11],[30,46,5.5,11]],
+    [[8,15,5,13],[17,15,5,13],[26,15,5,13],[35,15,5,13],[8,41,5,13],[17,41,5,13],[26,41,5,13],[35,41,5,13]],
+    [[9,12,5,11],[20,12,5,11],[31,12,5,11],[9,28,5,11],[20,28,5,11],[31,28,5,11],[9,44,5,11],[20,44,5,11],[31,44,5,11]]
+  ];
+  function dot(x, y, r, col) {
+    const c = C[col] || C.B;
+    return '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + c + '"/>' +
+           '<circle cx="' + x + '" cy="' + y + '" r="' + (r * 0.45) + '" fill="#fdfdf5"/>';
+  }
+  function stick(x, y, w, h, col) {
+    const c = C[col] || C.G;
+    let s = '<rect x="' + (x - w / 2) + '" y="' + (y - h / 2) + '" width="' + w + '" height="' + h + '" rx="' + (w / 2) + '" fill="' + c + '"/>';
+    for (const dy of [-h / 4, 0, h / 4])
+      s += '<rect x="' + (x - w / 2) + '" y="' + (y + dy - 0.7) + '" width="' + w + '" height="1.4" fill="#0d3d22" opacity=".5"/>';
+    return s;
+  }
+  function faceSVG(id) {
+    let inner = '';
+    if (id >= 27) { // 字牌
+      if (id === 33) inner = '<rect x="8" y="9" width="24" height="38" rx="3" fill="none" stroke="#2471a3" stroke-width="2.5"/>';
+      else {
+        const col = id === 31 ? C.R : id === 32 ? C.G : C.K;
+        inner = '<text x="20" y="37" text-anchor="middle" font-size="27" font-weight="700" fill="' + col + '" font-family="KaiTi,STKaiti,SimSun,serif">' + E.HONORS[id - 27] + '</text>';
+      }
+    } else {
+      const v = id % 9, suit = (id / 9) | 0;
+      if (suit === 0) { // 万
+        inner = '<text x="20" y="23" text-anchor="middle" font-size="18" font-weight="700" fill="' + C.K + '" font-family="KaiTi,STKaiti,SimSun,serif">' + E.NUM_CN[v] + '</text>' +
+                '<text x="20" y="49" text-anchor="middle" font-size="18" font-weight="700" fill="' + C.R + '" font-family="KaiTi,STKaiti,SimSun,serif">萬</text>';
+      } else if (suit === 1) { // 筒
+        if (v === 0) inner = '<circle cx="20" cy="28" r="11" fill="' + C.B + '"/><circle cx="20" cy="28" r="7" fill="#fdfdf5"/><circle cx="20" cy="28" r="4" fill="' + C.R + '"/><circle cx="20" cy="28" r="1.6" fill="#fdfdf5"/>';
+        else inner = DOT_POS[v].map(p => dot(p[0], p[1], p[2], p[3])).join('');
+      } else { // 条
+        inner = STK_POS[v].map((p, i) => {
+          const col = (v === 4 && i === 2) || (v === 6 && i === 0) ? 'R' : 'G';
+          return stick(p[0], p[1], p[2], p[3], col);
+        }).join('');
+      }
+    }
+    return '<svg viewBox="0 0 40 56" xmlns="http://www.w3.org/2000/svg">' + inner + '</svg>';
+  }
+
   function tileEl(id, extraCls) {
     const d = document.createElement('div');
-    const suit = id < 27 ? (id / 9) | 0 : -1;
-    const num = E.NUM_CN[id % 9];
-    d.className = 'tile ' + (suit >= 0 ? 's' + suit : 'honor');
-    if (id === 31) d.classList.add('zhong');
-    if (id === 32) d.classList.add('fa');
-    if (id === 33) d.classList.add('bai');
-    if (extraCls) d.classList.add(extraCls);
-    if (suit >= 0) {
-      d.innerHTML = '<span class="num">' + num + '</span><span class="suit">' + E.SUIT_CN[suit] + '</span>';
-    } else {
-      d.innerHTML = '<span class="num">' + E.HONORS[id - 27] + '</span>';
-    }
+    d.className = 'tile' + (extraCls ? ' ' + extraCls : '');
+    d.innerHTML = faceSVG(id);
     return d;
   }
 
