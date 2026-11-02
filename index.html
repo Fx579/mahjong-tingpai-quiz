@@ -83,6 +83,14 @@
   .feedback .waits { color: var(--gold); font-weight: 700; }
 
   .score-line b { color: var(--gold); font-size: 18px; }
+  .diffSel { display: flex; justify-content: center; gap: 12px; margin: 14px 0 4px; }
+  .diffSel button { background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.35);
+                    box-shadow: none; font-weight: 400; padding: 9px 20px; font-size: 14px; }
+  .diffSel button.active { background: var(--gold); color: #33270a; border-color: var(--gold); font-weight: 700; }
+  .diffSel button small { display: block; font-size: 11px; opacity: .8; }
+  #timer { font-variant-numeric: tabular-nums; }
+  .rating { font-weight: 700; }
+  .sumList { font-size: 13.5px; line-height: 2; margin: 10px auto 16px; display: inline-block; text-align: left; }
   .q-title { color: var(--gold); font-weight: 700; }
   #startPanel .rules { font-size: 13.5px; line-height: 1.9; opacity: .92; text-align: left;
                        background: rgba(0,0,0,.2); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
@@ -97,13 +105,19 @@
   <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定</div>
 
   <div id="startPanel" class="panel center">
-    <p style="font-size:16px;margin-bottom:6px;">每局 <b style="color:var(--gold)">8 题</b>，含九莲宝灯、十三幺等经典多面听牌型。</p>
+    <p style="font-size:16px;margin-bottom:6px;">每局 <b style="color:var(--gold)">8 题</b>，含经典多面听牌型，限时作答评级。</p>
+    <div class="diffSel">
+      <button id="diffNormal" class="active">一般<small>混花色 · 含十三幺</small></button>
+      <button id="diffHard">困难<small>同一花色 · 含九莲宝灯</small></button>
+    </div>
     <div class="rules">
       <h3>判定规则</h3>
       胡牌 = 4 组面子（顺子/刻子）+ 1 对将，或 七对，或 十三幺。<br>
       听牌 = 13 张牌，再摸任意一张即可胡牌；等待的牌种 ≥ 2 种即为<b>多面听</b>
       （两面听、三面听、双碰、九面听……）。<br>
       作答时请点击所有你认为是听牌的选项牌，然后提交。
+      <h3 style="margin-top:8px;">耗时评级（每题从出题到提交）</h3>
+      ≤5s 顶级 · ≤10s 出色 · ≤15s 熟练 · ≤30s 一般 · &gt;30s 还需努力
     </div>
     <button id="startBtn">开始挑战</button>
   </div>
@@ -112,6 +126,7 @@
     <div class="bar">
       <span>第 <b id="qNo">1</b> / <span id="qTotal">8</span> 题 <span id="qTitle" class="q-title"></span></span>
       <span class="tag" id="diffTag"></span>
+      <span class="tag" id="timer">⏱ 0.0s</span>
       <span class="score-line">得分 <b id="score">0</b></span>
     </div>
     <div class="center">
@@ -140,6 +155,16 @@
   const $ = id => document.getElementById(id);
   const TOTAL = 8;
   let questions = [], qi = 0, score = 0, selected = new Set(), answered = false;
+  let difficulty = 'normal', t0 = 0, timerId = 0, results = [];
+
+  const RATINGS = [
+    [5, '顶级', '#f5c542'],
+    [10, '出色', '#2ecc71'],
+    [15, '熟练', '#5dade2'],
+    [30, '一般', '#bdc3c7'],
+    [Infinity, '还需努力', '#e74c3c']
+  ];
+  function rate(t) { for (const r of RATINGS) if (t <= r[0]) return r; return RATINGS[4]; }
 
   function tileEl(id, extraCls) {
     const d = document.createElement('div');
@@ -159,13 +184,23 @@
   }
 
   function start() {
-    questions = E.makeRound(TOTAL, Date.now() & 0x7fffffff);
-    qi = 0; score = 0;
+    questions = E.makeRound(TOTAL, Date.now() & 0x7fffffff, difficulty);
+    qi = 0; score = 0; results = [];
     $('startPanel').style.display = 'none';
     $('endPanel').style.display = 'none';
     $('gamePanel').style.display = 'block';
     render();
   }
+
+  function startTimer() {
+    stopTimer();
+    t0 = performance.now();
+    $('timer').textContent = '⏱ 0.0s';
+    timerId = setInterval(() => {
+      $('timer').textContent = '⏱ ' + ((performance.now() - t0) / 1000).toFixed(1) + 's';
+    }, 100);
+  }
+  function stopTimer() { if (timerId) { clearInterval(timerId); timerId = 0; } }
 
   function render() {
     const q = questions[qi];
@@ -174,12 +209,13 @@
     $('qTotal').textContent = questions.length;
     $('score').textContent = score;
     $('qTitle').textContent = q.title ? '· ' + q.title : '';
-    $('diffTag').textContent = q.label;
+    $('diffTag').textContent = (difficulty === 'hard' ? '困难·同花色 ' : '一般·混花色 ') + q.label;
     $('feedback').className = 'feedback';
     $('feedback').innerHTML = '';
     $('submitBtn').style.display = 'inline-block';
     $('submitBtn').disabled = false;
     $('nextBtn').style.display = 'none';
+    startTimer();
 
     const hand = $('hand'); hand.innerHTML = '';
     q.hand.forEach(id => hand.appendChild(tileEl(id)));
@@ -200,10 +236,14 @@
   function submit() {
     if (answered || selected.size === 0) return;
     answered = true;
+    stopTimer();
+    const elapsed = (performance.now() - t0) / 1000;
+    const rt = rate(elapsed);
     const q = questions[qi];
     const waitSet = new Set(q.waits);
     const exact = selected.size === waitSet.size && [...selected].every(t => waitSet.has(t));
     if (exact) score++;
+    results.push({ no: qi + 1, title: q.title, ok: exact, time: elapsed, rating: rt });
 
     document.querySelectorAll('.tile.opt').forEach(t => {
       const id = +t.dataset.id;
@@ -215,12 +255,13 @@
 
     const fb = $('feedback');
     const names = q.waits.map(E.tileName).join('、');
+    const timeHtml = '<br>⏱ 用时 <b>' + elapsed.toFixed(1) + 's</b> · 评级 <span class="rating" style="color:' + rt[2] + '">' + rt[1] + '</span>';
     if (exact) {
       fb.className = 'feedback ok';
-      fb.innerHTML = '✅ 回答正确！该手牌听 <span class="waits">' + names + '</span>（' + q.label + '）';
+      fb.innerHTML = '✅ 回答正确！该手牌听 <span class="waits">' + names + '</span>（' + q.label + '）' + timeHtml;
     } else {
       fb.className = 'feedback no';
-      fb.innerHTML = '❌ 不对。正确答案：听 <span class="waits">' + names + '</span>（' + q.label + '）<br>' +
+      fb.innerHTML = '❌ 不对。正确答案：听 <span class="waits">' + names + '</span>（' + q.label + '）' + timeHtml + '<br>' +
         '<span style="font-size:13px;opacity:.85;">提示：绿框=漏选，红框=多选，暗色=未选中的干扰项</span>';
     }
     $('submitBtn').style.display = 'none';
@@ -234,14 +275,29 @@
       $('gamePanel').style.display = 'none';
       $('endPanel').style.display = 'block';
       const pct = Math.round(score / questions.length * 100);
+      const avg = results.reduce((s, r) => s + r.time, 0) / results.length;
+      const fast = results.filter(r => r.time <= 5).length;
       let word = pct === 100 ? '🏆 雀圣！全部答对！'
         : pct >= 75 ? '🎉 高手！听牌嗅觉敏锐！'
         : pct >= 50 ? '👍 不错，再多练练牌感。'
         : '📖 继续琢磨，多面听就在身边。';
-      $('finalText').innerHTML = '本轮得分 <b style="color:var(--gold)">' + score + ' / ' + questions.length + '</b><br>' + word;
+      let sum = results.map(r =>
+        '第' + r.no + '题 ' + (r.title ? r.title + ' ' : '') + (r.ok ? '✅' : '❌') +
+        ' ' + r.time.toFixed(1) + 's <span class="rating" style="color:' + r.rating[2] + '">' + r.rating[1] + '</span>'
+      ).join('<br>');
+      $('finalText').innerHTML = '本轮得分 <b style="color:var(--gold)">' + score + ' / ' + questions.length + '</b><br>' +
+        '平均用时 ' + avg.toFixed(1) + 's · 顶级反应 ' + fast + ' 题<br>' + word +
+        '<div class="sumList">' + sum + '</div>';
     } else render();
   }
 
+  function setDiff(d) {
+    difficulty = d;
+    $('diffNormal').classList.toggle('active', d === 'normal');
+    $('diffHard').classList.toggle('active', d === 'hard');
+  }
+  $('diffNormal').addEventListener('click', () => setDiff('normal'));
+  $('diffHard').addEventListener('click', () => setDiff('hard'));
   $('startBtn').addEventListener('click', start);
   $('restartBtn').addEventListener('click', start);
   $('submitBtn').addEventListener('click', submit);
