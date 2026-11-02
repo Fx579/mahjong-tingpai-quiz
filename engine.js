@@ -196,12 +196,15 @@
     return null;
   }
 
-  function buildOptions(waits, rng, target = 10) {
+  // 干扰项：suit 指定时只从同花色取（困难），否则全牌池（一般）
+  function buildOptions(waits, rng, suit, target = 10) {
     const set = new Set(waits);
     const opts = waits.slice();
     const pool = [];
-    for (let t = 0; t < 34; t++) if (!set.has(t)) pool.push(t);
-    const need = Math.max(0, Math.min(target, 34) - opts.length);
+    const lo = suit == null ? 0 : suit * 9;
+    const hi = suit == null ? 33 : suit * 9 + 8;
+    for (let t = lo; t <= hi; t++) if (!set.has(t)) pool.push(t);
+    const need = Math.max(0, Math.min(target, opts.length + pool.length) - opts.length);
     return shuffle(rng, opts.concat(shuffle(rng, pool).slice(0, need)));
   }
 
@@ -249,7 +252,7 @@
       counts: g.counts,
       hand: expand(g.counts).sort((a, b) => a - b),
       waits: g.waits,
-      options: buildOptions(g.waits, rng),
+      options: buildOptions(g.waits, rng, suit),
       label: waitLabel(g.waits.length)
     };
   }
