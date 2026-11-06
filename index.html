@@ -103,7 +103,7 @@
 <body>
 <div class="wrap">
   <h1>🀄 麻将多面听牌挑战</h1>
-  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v3.0</span></div>
+  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v3.1</span></div>
 
   <div id="startPanel" class="panel center">
     <p style="font-size:16px;margin-bottom:6px;">每局 <b style="color:var(--gold)">8 题</b>，含经典多面听牌型，限时作答评级。</p>
@@ -130,6 +130,7 @@
       <span class="tag" id="diffTag"></span>
       <span class="tag" id="timer">⏱ 0.0s</span>
       <span class="score-line">得分 <b id="score">0</b></span>
+      <button id="exitBtn" class="ghost" style="padding:5px 16px;font-size:13px;box-shadow:none">↩ 退出游戏</button>
     </div>
     <div class="center">
       <div style="font-size:13px;opacity:.8;margin-bottom:2px;">当前手牌（13 张，已听牌）</div>
@@ -147,6 +148,7 @@
   <div id="endPanel" class="panel center" style="display:none">
     <div class="final" id="finalText"></div>
     <button id="restartBtn">再来一局</button>
+    <button id="menuBtn" class="ghost">返回主菜单</button>
   </div>
 </div>
 
@@ -427,10 +429,20 @@
   $('diffNormal').addEventListener('click', () => setDiff('normal'));
   $('diffHard').addEventListener('click', () => setDiff('hard'));
   $('diffHell').addEventListener('click', () => setDiff('hell'));
+  function backToMenu() {
+    stopTimer();
+    $('gamePanel').style.display = 'none';
+    $('endPanel').style.display = 'none';
+    $('startPanel').style.display = 'block';
+  }
   $('startBtn').addEventListener('click', start);
   $('restartBtn').addEventListener('click', start);
   $('submitBtn').addEventListener('click', submit);
   $('nextBtn').addEventListener('click', next);
+  $('exitBtn').addEventListener('click', () => {
+    if (confirm('确定退出本局吗？当前得分与进度将不会保存。')) backToMenu();
+  });
+  $('menuBtn').addEventListener('click', backToMenu);
 })();
 </script>
 </body>
