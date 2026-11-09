@@ -100,13 +100,14 @@
   @media (max-width: 640px) { .tile { width: 38px; height: 52px; } .tile .num { font-size: 17px; } .tile .suit { font-size: 12px; } }
 
   /* ===== 人机对战（雀魂风格） ===== */
-  #battleRoot { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; font-size: 14px; background: #06120a; --bw: 46px; --rw: 30px; }
+  #battleRoot { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; font-size: 14px; background: #06120a; --bw: 50px; --rw: 30px; }
   .rotHint { display: none; color: #8fe3a8; font-size: 11px; white-space: nowrap; }
   .bhead { display: flex; gap: 10px; align-items: center; padding: 3px 10px; background: #0a1f12; color: #fff; }
   .bh-l { color: var(--gold); font-weight: 700; } .bmsg { flex: 1; opacity: .8; font-size: 13px; }
   .bh-r { padding: 3px 12px; font-size: 13px; }
   .felt { flex: 1; position: relative; min-height: 0;
-    background: radial-gradient(115% 115% at 50% 38%, #2a7a44 0%, #1a5a30 45%, #0d3a1d 78%, #072512 100%);
+    background: repeating-linear-gradient(45deg, rgba(255,255,255,.014) 0 2px, rgba(0,0,0,.012) 2px 4px),
+    radial-gradient(115% 115% at 50% 38%, #2a7a44 0%, #1a5a30 45%, #0d3a1d 78%, #072512 100%);
     box-shadow: inset 0 0 60px rgba(0,0,0,.55); }
   
   .tablegrid { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(72px,104px) minmax(0,1fr) minmax(72px,104px);
@@ -114,6 +115,17 @@
   .cell { min-width: 0; min-height: 0; position: relative; }
   .opp { display: flex; flex-direction: column; align-items: center; gap: 0; }
   .c-t { grid-area: 1/2; } .c-l { grid-area: 2/1; } .c-r { grid-area: 2/3; }
+  .c-t .opp { margin-top: 15px; }
+  .wallseg { position: absolute; display: flex; gap: 2px; z-index: 3; align-items: center; }
+  .ws-t { top: 2px; left: 50%; transform: translateX(-50%); }
+  .ws-l { left: 2px; top: 50%; transform: translateY(-50%); flex-direction: column; }
+  .ws-r { right: 2px; top: 50%; transform: translateY(-50%); flex-direction: column; }
+  .wst { display: inline-flex; flex-direction: column; gap: 1px; }
+  .wst i { width: 17px; height: 10px; border-radius: 2px; background: linear-gradient(160deg, #3e7d5a, #285e40 60%, #1d4a31); box-shadow: 0 1px 2px rgba(0,0,0,.45); }
+  .wst.v { flex-direction: row; }
+  .wst.v i { width: 10px; height: 17px; }
+  .wmark { color: var(--gold); font-size: 11px; text-shadow: 0 1px 2px #000; }
+  .ws-me { display: flex; gap: 2px; justify-content: center; align-items: center; margin-top: 1px; }
   .c-l .opp { align-items: flex-end; } .c-r .opp { align-items: flex-start; }
   .c-cc { grid-area: 2/2; position: relative; overflow: hidden; }
   .c-b { grid-area: 3/1/4/4; }
@@ -143,7 +155,7 @@
   .bme { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 0 6px 2px; }
   .btop { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; width: min(96%, 640px); }
   .mmelds { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: 40%; }
-  .mhand { display: flex; flex-wrap: nowrap; justify-content: center; align-items: flex-end; gap: 0; }
+  .mhand { display: flex; flex-wrap: nowrap; justify-content: center; align-items: flex-end; gap: 4px; }
   .mhand .gap { width: 6px; }
   .tile.bt { width: var(--bw, 42px); height: calc(var(--bw, 42px) * 1.34); margin: 0; border-radius: 5px;
     box-shadow: 0 2px 0 #9a9a86, 0 3px 6px rgba(0,0,0,.45); }
@@ -186,13 +198,13 @@
     .abig { width: 52px; height: 52px; font-size: 20px; } .abig.pass { width: 38px; height: 38px; }
   }
   @media (orientation: portrait) and (max-width: 640px) { #battleRoot { --bw: 26px; --rw: min(30px, 8.6vw); }
-    .rotHint { display: inline; } }
+    .rotHint { display: inline; } .mhand { gap: 1px; } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>? 麻将多面听牌挑战</h1>
-  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v4.3</span></div>
+  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v4.4</span></div>
 
   <div id="startPanel" class="panel center">
     <div class="modeSel"><button id="modeQuiz" class="active">听牌练习<small>多面听测验</small></button><button id="modeBattle">人机对战<small>1 打 3 · 国标简化</small></button></div><p id="quizIntro" style="font-size:16px;margin-bottom:6px;">每局 <b style="color:var(--gold)">8 题</b>，含经典多面听牌型，限时作答评级。</p>
@@ -252,7 +264,7 @@
 </div>
 
 <script src="engine.js?v=7"></script>
-<script src="battle.js?v=5"></script>
+<script src="battle.js?v=6"></script>
 <script>
 (function () {
   const E = window.MahjongEngine;
@@ -310,15 +322,15 @@
     return s;
   }
   const TILES = [
-    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#20242a\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">一</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
-    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#20242a\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">二</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
-    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#20242a\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">三</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
-    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#20242a\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">四</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
-    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#20242a\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">五</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
-    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#20242a\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">六</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
-    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#20242a\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">七</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
-    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#20242a\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">八</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
-    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#20242a\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">九</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">一</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">二</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">三</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">四</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">五</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">六</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">七</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">八</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><text x=\"50\" y=\"58\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"44\" font-weight=\"700\" text-anchor=\"middle\">九</text><text x=\"50\" y=\"122\" fill=\"#b6261f\" font-family=\"'Noto Serif SC','Songti SC','SimHei','Microsoft YaHei',serif\" font-size=\"42\" font-weight=\"700\" text-anchor=\"middle\">萬</text></svg>",
     "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><circle cx=\"50\" cy=\"70\" r=\"30\" fill=\"#1c56a0\"/><circle cx=\"50\" cy=\"70\" r=\"16.5\" fill=\"#fdfdf5\"/><circle cx=\"50\" cy=\"70\" r=\"8.4\" fill=\"#1c56a0\"/><circle cx=\"50\" cy=\"70\" r=\"13\" fill=\"#b6261f\"/><circle cx=\"50\" cy=\"70\" r=\"7.2\" fill=\"#fdfdf5\"/><circle cx=\"50\" cy=\"70\" r=\"3.6\" fill=\"#b6261f\"/></svg>",
     "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><circle cx=\"50\" cy=\"44\" r=\"15\" fill=\"#17703c\"/><circle cx=\"50\" cy=\"44\" r=\"8.2\" fill=\"#fdfdf5\"/><circle cx=\"50\" cy=\"44\" r=\"4.2\" fill=\"#17703c\"/><circle cx=\"50\" cy=\"96\" r=\"15\" fill=\"#b6261f\"/><circle cx=\"50\" cy=\"96\" r=\"8.2\" fill=\"#fdfdf5\"/><circle cx=\"50\" cy=\"96\" r=\"4.2\" fill=\"#b6261f\"/></svg>",
     "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 140\"><circle cx=\"30\" cy=\"42\" r=\"14\" fill=\"#1c56a0\"/><circle cx=\"30\" cy=\"42\" r=\"7.7\" fill=\"#fdfdf5\"/><circle cx=\"30\" cy=\"42\" r=\"3.9\" fill=\"#1c56a0\"/><circle cx=\"50\" cy=\"70\" r=\"14\" fill=\"#17703c\"/><circle cx=\"50\" cy=\"70\" r=\"7.7\" fill=\"#fdfdf5\"/><circle cx=\"50\" cy=\"70\" r=\"3.9\" fill=\"#17703c\"/><circle cx=\"70\" cy=\"98\" r=\"14\" fill=\"#b6261f\"/><circle cx=\"70\" cy=\"98\" r=\"7.7\" fill=\"#fdfdf5\"/><circle cx=\"70\" cy=\"98\" r=\"3.9\" fill=\"#b6261f\"/></svg>",
