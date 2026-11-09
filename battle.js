@@ -1,4 +1,4 @@
-﻿/* 麻将人机对战：1 玩家 + 3 AI，国标简化规则（吃碰杠胡、无番不胡、8 分为底）
+﻿﻿/* 麻将人机对战：1 玩家 + 3 AI，国标简化规则（吃碰杠胡、无番不胡、8 分为底）
    AI 纯逻辑分析：向听数 + 进张量 + 危险度（基于对手牌河与副露），不吃牌山。
    UI 参考雀魂：绿色牌桌、四家牌河环绕、右侧浮层操作按钮、吃牌组合选择弹窗。 */
 (function (global) {
@@ -384,25 +384,38 @@
       '<div class="omelds">' + G.melds[p].map(m => meldHTML(m)).join('') + '</div>' +
       '</div>';
   }
+  function wallStacks(n, vert, mark) {
+    let s = '';
+    for (let i = 0; i < n; i++) s += '<span class="wst' + (vert ? ' v' : '') + '"><i></i><i></i></span>';
+    if (mark) s += '<span class="wmark">' + (vert ? '▾' : '▸') + '</span>';
+    return s;
+  }
+  function wallHTML(turnP) {
+    const n = Math.min(17, Math.max(1, Math.ceil(G.wall.length / 8)));
+    return wallStacks(n, turnP === 3 || turnP === 1, turnP);
+  }
   function render() {
     const root = document.getElementById('battleRoot');
     if (!root || !G) return;
     let h = '<div class="bhead"><span class="bh-l">第 ' + G.round + ' 局 · 庄 ' + SEATS[G.dealer] + ' · ' + LVCN[G.diff] + '</span>' +
       '<span class="bmsg">' + (G.msg || '') + '</span>' +
-      '<span class="rotHint">↻ 建议横屏游玩</span>' +
       '<button id="bQuit" class="ghost bh-r">☰ 菜单</button></div>';
-    h += '<div class="felt"><div class="tablegrid">';
+    h += '<div class="felt">' +
+      '<div class="wallseg ws-t">' + wallStacks(Math.min(17, Math.max(1, Math.ceil(G.wall.length / 8))), 0, G.turn === 2) + '</div>' +
+      '<div class="wallseg ws-l">' + wallStacks(Math.min(17, Math.max(1, Math.ceil(G.wall.length / 8))), 1, G.turn === 3) + '</div>' +
+      '<div class="wallseg ws-r">' + wallStacks(Math.min(17, Math.max(1, Math.ceil(G.wall.length / 8))), 1, G.turn === 1) + '</div>' +
+      '<div class="tablegrid">';
     h += '<div class="cell c-t">' + oppBlock(2, 'top') + '</div>';
     h += '<div class="cell c-l">' + oppBlock(3, 'left') + '</div>';
     h += '<div class="cell c-cc"><div class="sq">' +
       '<div class="rz rz-t"><div class="river">' + riverHTML(2) + '</div></div>' +
-      '<div class="rz rz-l"><div class="river vert">' + riverHTML(3) + '</div></div>' +
-      '<div class="rz rz-r"><div class="river vert rev">' + riverHTML(1) + '</div></div>' +
+      '<div class="rz rz-l"><div class="river">' + riverHTML(3) + '</div></div>' +
+      '<div class="rz rz-r"><div class="river">' + riverHTML(1) + '</div></div>' +
       '<div class="rz rz-b"><div class="river">' + riverHTML(0) + '</div></div>' +
       '<div class="walln">' + G.wall.length + '<small>余牌</small></div></div></div>';
     h += '<div class="cell c-r">' + oppBlock(1, 'right') + '</div>';
     // 我方区
-    h += '<div class="cell c-b"><div class="bme">';
+    h += '<div class="cell c-b"><div class="bme"><div class="ws-me">' + wallStacks(Math.min(17, Math.max(1, Math.ceil(G.wall.length / 8))), 0, G.turn === 0) + '</div>';
     h += '<div class="btop"><div class="mmelds">' + G.melds[0].map(m => meldHTML(m, true)).join('') + '</div></div>';
     h += '<div class="mhand">';
     const hand = G.hands[0].slice();
