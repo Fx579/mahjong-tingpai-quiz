@@ -100,7 +100,8 @@
   @media (max-width: 640px) { .tile { width: 38px; height: 52px; } .tile .num { font-size: 17px; } .tile .suit { font-size: 12px; } }
 
   /* ===== 人机对战（雀魂风格） ===== */
-  #battleRoot { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; font-size: 14px; background: #06120a; --bw: 46px; }
+  #battleRoot { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; font-size: 14px; background: #06120a; --bw: 46px; --rw: 30px; }
+  .rotHint { display: none; color: #8fe3a8; font-size: 11px; white-space: nowrap; }
   .bhead { display: flex; gap: 10px; align-items: center; padding: 3px 10px; background: #0a1f12; color: #fff; }
   .bh-l { color: var(--gold); font-weight: 700; } .bmsg { flex: 1; opacity: .8; font-size: 13px; }
   .bh-r { padding: 3px 12px; font-size: 13px; }
@@ -126,13 +127,17 @@
   .obacks.vert { flex-direction: column; flex-wrap: wrap; max-height: 220px; }
   .omelds { display: flex; gap: 2px; justify-content: center; flex-wrap: wrap; margin-top: 0; }
   .mg { display: inline-flex; gap: 1px; background: rgba(0,0,0,.18); border-radius: 4px; padding: 1px; }
-  .river { display: flex; flex-wrap: wrap; gap: 1px; justify-content: flex-start; align-content: flex-start; width: calc(var(--bw, 46px) * 3.24 + 5px); min-height: 16px; line-height: 0; }
-  .sq { position: absolute; left: 50%; top: 50%; width: min(58vh, 44vw); aspect-ratio: 1; transform: translate(-50%,-50%); }
+  .river { display: flex; flex-wrap: wrap; gap: 1px; justify-content: flex-start; align-content: flex-start; width: calc(var(--rw, 30px) * 6 + 5px); min-height: 16px; line-height: 0; }
+  .sq { position: absolute; left: 50%; top: 50%; width: calc(var(--rw, 30px) * 8.66 + 5px); aspect-ratio: 1; transform: translate(-50%,-50%); }
   .rz { position: absolute; }
   .rz-t { top: 0; left: 50%; transform: translateX(-50%); }
   .rz-b { bottom: 0; left: 50%; transform: translateX(-50%); }
-  .rz-l { left: 2px; top: 50%; transform: translateY(-50%) rotate(90deg); }
-  .rz-r { right: 2px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+  .rz-l { left: 0; top: 0; }
+  .rz-r { right: 0; top: 0; }
+  .rz-b .river { align-content: flex-end; }
+  .river.vert { flex-direction: column; flex-wrap: wrap; align-content: flex-start; width: calc(var(--rw, 30px) * 7.98 + 5px); height: calc(var(--rw, 30px) * 6 + 5px); }
+  .river.vert.rev { flex-wrap: wrap-reverse; }
+  .river.vert .tile.bt.rvt { width: calc(var(--rw, 30px) * 1.33); height: var(--rw, 30px); }
   .walln { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); color: #dff0e2; font-weight: 700; text-align: center; opacity: .5; font-size: 22px; text-shadow: 0 2px 4px #000; }
   .walln small { display: block; font-size: 10px; font-weight: 400; }
   .bme { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 0 6px 2px; }
@@ -143,7 +148,7 @@
   .tile.bt { width: var(--bw, 42px); height: calc(var(--bw, 42px) * 1.34); margin: 0; border-radius: 5px;
     box-shadow: 0 2px 0 #9a9a86, 0 3px 6px rgba(0,0,0,.45); }
   .tile.bt.sm { width: calc(var(--bw, 42px) * .66); height: calc(var(--bw, 42px) * .88); }
-  .tile.bt.rvt { width: calc(var(--bw, 46px) * .54); height: calc(var(--bw, 46px) * .72); border-radius: 3px; opacity: .95; }
+  .tile.bt.rvt { width: var(--rw, 30px); height: calc(var(--rw, 30px) * 1.33); border-radius: 3px; opacity: .95; }
   .tile.bt.back.tb { width: 14px; height: 19px; border-radius: 3px; }
   .tile.bt.back.tbv { width: 19px; height: 14px; border-radius: 3px; }
   .tile.bt.hot { outline: 2px solid #ff5b5b; animation: hotp 1s infinite; }
@@ -176,17 +181,18 @@
   .scorerow b { color: var(--gold); } .scorerow .me b { color: #7ce8a2; }
   .fb { font-size: 12px; }
   body.battling { overflow: hidden; }
-  @media (orientation: landscape) and (max-height: 560px) {
-    #battleRoot { --bw: 34px; } .actFloat { bottom: 64px; }
+  @media (orientation: landscape) and (max-height: 640px) {
+    #battleRoot { --bw: 34px; --rw: 24px; } .actFloat { bottom: 64px; }
     .abig { width: 52px; height: 52px; font-size: 20px; } .abig.pass { width: 38px; height: 38px; }
   }
-  @media (orientation: portrait) and (max-width: 640px) { #battleRoot { --bw: 26px; } .sq { width: 78vw; } }
+  @media (orientation: portrait) and (max-width: 640px) { #battleRoot { --bw: 26px; --rw: min(30px, 8.6vw); }
+    .rotHint { display: inline; } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>? 麻将多面听牌挑战</h1>
-  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v4.2</span></div>
+  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v4.3</span></div>
 
   <div id="startPanel" class="panel center">
     <div class="modeSel"><button id="modeQuiz" class="active">听牌练习<small>多面听测验</small></button><button id="modeBattle">人机对战<small>1 打 3 · 国标简化</small></button></div><p id="quizIntro" style="font-size:16px;margin-bottom:6px;">每局 <b style="color:var(--gold)">8 题</b>，含经典多面听牌型，限时作答评级。</p>
@@ -246,7 +252,7 @@
 </div>
 
 <script src="engine.js?v=7"></script>
-<script src="battle.js?v=4"></script>
+<script src="battle.js?v=5"></script>
 <script>
 (function () {
   const E = window.MahjongEngine;
