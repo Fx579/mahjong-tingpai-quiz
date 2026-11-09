@@ -352,8 +352,8 @@
 
   /* ---------- 渲染（雀魂风格） ---------- */
   function faceSVG(t) { return (global.MJFACE ? global.MJFACE(t) : '<span class="fb">' + TN(t) + '</span>'); }
-  function tileHTML(t, cls, onclick) {
-    return '<div class="tile bt ' + (cls || '') + '" ' + (onclick ? 'onclick="' + onclick + '"' : '') + '>' + faceSVG(t) + '</div>';
+  function tileHTML(t, cls, onclick, st) {
+    return '<div class="tile bt ' + (cls || '') + '" ' + (st ? 'style="' + st + '" ' : '') + (onclick ? 'onclick="' + onclick + '"' : '') + '>' + faceSVG(t) + '</div>';
   }
   function riverHTML(p) {
     const r = G.rivers[p];
@@ -371,28 +371,31 @@
     }
     return '<span class="mg">' + m.tiles.map(t => tileHTML(t, 'sm')).join('') + '</span>';
   }
-  function oppBlock(p, pos) {
-    const backs = Math.min(G.hands[p].length, 13);
-    let bk = '';
-    if (pos === 'top') { for (let i = 0; i < backs; i++) bk += '<div class="tile bt back tb"></div>'; }
-    else { for (let i = 0; i < backs; i++) bk += '<div class="tile bt back tbv"></div>'; }
-    return '<div class="opp ' + pos + '">' +
-      '<div class="seatbadge"><b>' + G.names[p] + '</b><span class="lvtag">' + LVCN[G.aiLevel[p]] + '</span>' +
-      (G.turn === p && G.phase !== 'over' ? '<span class="think">思考…</span>' : '') +
-      '<span class="sc">' + G.scores[p] + '</span></div>' +
-      '<div class="obacks' + (pos === 'top' ? '' : ' vert') + '">' + bk + '</div>' +
-      '<div class="omelds">' + G.melds[p].map(m => meldHTML(m)).join('') + '</div>' +
-      '</div>';
-  }
-  function wallStacks(n, vert, mark) {
+  function oppHandHTML(p) {
+    const cls = p === 2 ? 'oh-top' : p === 3 ? 'oh-left' : 'oh-right';
+    const n = G.hands[p].length;
     let s = '';
-    for (let i = 0; i < n; i++) s += '<span class="wst' + (vert ? ' v' : '') + '"><i></i><i></i></span>';
-    if (mark) s += '<span class="wmark">' + (vert ? '▾' : '▸') + '</span>';
-    return s;
+    for (let i = 0; i < n; i++) s += '<div class="tile bt back"></div>';
+    return '<div class="ohand ' + cls + '">' + s + '</div>';
   }
-  function wallHTML(turnP) {
-    const n = Math.min(17, Math.max(1, Math.ceil(G.wall.length / 8)));
-    return wallStacks(n, turnP === 3 || turnP === 1, turnP);
+  function badgeHTML(p) {
+    const cls = p === 2 ? 'b-top' : p === 3 ? 'b-left' : p === 1 ? 'b-right' : 'b-me';
+    return '<div class="pbadge ' + cls + '"><div class="pbav">' + G.names[p].slice(-1) + '</div>' +
+      '<div class="pbname">' + G.names[p] + '</div>' +
+      (p === 0 ? '<div class="pblv">' + LVCN[G.diff] + '</div>'
+        : (G.turn === p && G.phase !== 'over' ? '<div class="pbthink">思考中…</div>' : '<div class="pblv">' + LVCN[G.aiLevel[p]] + '</div>')) + '</div>';
+  }
+  function meldsHTML(p) {
+    if (!G.melds[p].length) return '';
+    return '<div class="omelds m' + p + '">' + G.melds[p].map(m => meldHTML(m)).join('') + '</div>';
+  }
+  function ccPanelHTML() {
+    const dl = t => G.dealer === t ? '<span class="cp-dealer">東</span>' : '';
+    return '<div class="ccpanel"><div class="cp-oct"><div class="cp-in">' +
+      '<div class="cp-round">東' + G.round + '局</div><div class="cp-rest">余 ' + G.wall.length + '</div></div></div>' +
+      '<span class="cp-sc s2">' + G.scores[2] + dl(2) + '</span><span class="cp-sc s0">' + G.scores[0] + dl(0) + '</span>' +
+      '<span class="cp-sc s3">' + G.scores[3] + dl(3) + '</span><span class="cp-sc s1">' + G.scores[1] + dl(1) + '</span>' +
+      '<span class="cp-w wtl">東</span><span class="cp-w wtr">北</span><span class="cp-w wbl">南</span><span class="cp-w wbr">西</span></div>';
   }
   function render() {
     const root = document.getElementById('battleRoot');
@@ -400,31 +403,30 @@
     let h = '<div class="bhead"><span class="bh-l">第 ' + G.round + ' 局 · 庄 ' + SEATS[G.dealer] + ' · ' + LVCN[G.diff] + '</span>' +
       '<span class="bmsg">' + (G.msg || '') + '</span>' +
       '<button id="bQuit" class="ghost bh-r">☰ 菜单</button></div>';
-    h += '<div class="felt">' +
-      '<div class="wallseg ws-t">' + wallStacks(Math.min(17, Math.max(1, Math.ceil(G.wall.length / 8))), 0, G.turn === 2) + '</div>' +
-      '<div class="wallseg ws-l">' + wallStacks(Math.min(17, Math.max(1, Math.ceil(G.wall.length / 8))), 1, G.turn === 3) + '</div>' +
-      '<div class="wallseg ws-r">' + wallStacks(Math.min(17, Math.max(1, Math.ceil(G.wall.length / 8))), 1, G.turn === 1) + '</div>' +
-      '<div class="tablegrid">';
-    h += '<div class="cell c-t">' + oppBlock(2, 'top') + '</div>';
-    h += '<div class="cell c-l">' + oppBlock(3, 'left') + '</div>';
-    h += '<div class="cell c-cc"><div class="sq">' +
-      '<div class="rz rz-t"><div class="river">' + riverHTML(2) + '</div></div>' +
-      '<div class="rz rz-l"><div class="river">' + riverHTML(3) + '</div></div>' +
-      '<div class="rz rz-r"><div class="river">' + riverHTML(1) + '</div></div>' +
-      '<div class="rz rz-b"><div class="river">' + riverHTML(0) + '</div></div>' +
-      '<div class="walln">' + G.wall.length + '<small>余牌</small></div></div></div>';
-    h += '<div class="cell c-r">' + oppBlock(1, 'right') + '</div>';
-    // 我方区
-    h += '<div class="cell c-b"><div class="bme"><div class="ws-me">' + wallStacks(Math.min(17, Math.max(1, Math.ceil(G.wall.length / 8))), 0, G.turn === 0) + '</div>';
-    h += '<div class="btop"><div class="mmelds">' + G.melds[0].map(m => meldHTML(m, true)).join('') + '</div></div>';
+    h += '<div class="felt"><div class="edge"></div>';
+    h += oppHandHTML(2) + oppHandHTML(3) + oppHandHTML(1);
+    h += badgeHTML(2) + badgeHTML(3) + badgeHTML(1) + badgeHTML(0);
+    h += meldsHTML(2) + meldsHTML(3) + meldsHTML(1);
+    h += '<div class="riverzone">' +
+      '<div class="river riv-t">' + riverHTML(2) + '</div>' +
+      '<div class="river riv-l">' + riverHTML(3) + '</div>' +
+      ccPanelHTML() +
+      '<div class="river riv-r">' + riverHTML(1) + '</div>' +
+      '<div class="river riv-b">' + riverHTML(0) + '</div></div>';
+    // 我方副露 + 手牌
+    h += '<div class="bme"><div class="mmelds">' + G.melds[0].map(m => meldHTML(m, true)).join('') + '</div>';
     h += '<div class="mhand">';
     const hand = G.hands[0].slice();
     const myTurn = G.phase === 'discard' && G.turn === 0;
     if (myTurn && G.drawn >= 0) {
       const i = hand.lastIndexOf(G.drawn);
-      if (i >= 0) { const t = hand.splice(i, 1)[0]; h += hand.map(x => tileHTML(x, 'canplay', 'MB.play(' + x + ')')).join('') + '<span class="gap"></span>' + tileHTML(t, 'drawn canplay', 'MB.play(' + t + ')'); }
-      else h += hand.map(x => tileHTML(x, 'canplay', 'MB.play(' + x + ')')).join('');
-    } else h += hand.map(x => tileHTML(x, '')).join('');
+      if (i >= 0) {
+        const t = hand.splice(i, 1)[0];
+        h += hand.map(x => tileHTML(x, 'canplay', 'MB.play(' + x + ')', '')).join('') +
+          '<span class="gap"></span>' + tileHTML(t, 'canplay', 'MB.play(' + t + ')', 'transform:translateY(-10px);');
+      }
+      else h += hand.map(x => tileHTML(x, 'canplay', 'MB.play(' + x + ')', '')).join('');
+    } else h += hand.map(x => tileHTML(x, '', '', '')).join('');
     h += '</div></div>';
     // 右侧浮层操作按钮（雀魂式）
     const acts = [];
