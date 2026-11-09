@@ -1,11 +1,11 @@
 ﻿/* 麻将人机对战：1 玩家 + 3 AI，国标简化规则（吃碰杠胡、无番不胡、8 分为底）
-   AI 纯逻辑分析：向听数 + 进张量 + 危险度（基于对手牌河与副露），不吃牌山。 */
+   AI 纯逻辑分析：向听数 + 进张量 + 危险度（基于对手牌河与副露），不吃牌山。
+   UI 参考雀魂：绿色牌桌、四家牌河环绕、右侧浮层操作按钮、吃牌组合选择弹窗。 */
 (function (global) {
   "use strict";
   const E = global.MahjongEngine;
   if (!E) { console.error("battle.js 需要 MahjongEngine"); return; }
   const TN = E.tileName;
-  const HON = ['东', '南', '西', '北', '中', '发', '白'];
   const isHonor = t => t >= 27;
   const suitOf = t => t < 9 ? 0 : t < 18 ? 1 : t < 27 ? 2 : 3;
   const isTerm = t => t < 27 && (t % 9 === 0 || t % 9 === 8);
@@ -51,7 +51,6 @@
     }
     return s;
   }
-  /* 进张量（按剩余可摸数加权） */
   function ukeire(c, melds, avail) {
     const s = shanten(c, melds); let u = 0;
     for (let t = 0; t < 34; t++) {
@@ -72,14 +71,11 @@
     const hasHonor = all.some(isHonor);
     const hasTerm = all.some(isTerm);
     const ds0 = ds[0];
-    const ke = []; // 所有刻子/杠（含副露）
+    const ke = [];
     for (const m of melds) if (m.type !== 'chi') ke.push(m.tiles[0]);
     const stds = ds.filter(d => d.form === 'std');
     let closedKe = [];
-    if (stds.length) {
-      const g = stds[0].groups.filter(x => x.type === 'ke');
-      closedKe = g.map(x => x.tiles[0]);
-    }
+    if (stds.length) closedKe = stds[0].groups.filter(g => g.type === 'ke').map(g => g.tiles[0]);
     const allKe = ke.concat(closedKe);
     const windKe = allKe.filter(t => t >= 27 && t <= 30);
     const drK = allKe.filter(t => t >= 31);
@@ -107,13 +103,12 @@
   }
 
   /* ---------- 牌局状态 ---------- */
-  const SEATS = ['你', '下家·AI', '对家·AI', '上家·AI'];
+  const SEATS = ['你', '下家', '对家', '上家'];
+  const LVCN = { easy: '初学', normal: '进阶', hard: '大师' };
   let G = null;
   function newGame(diff) {
     G = { diff, scores: [0, 0, 0, 0], dealer: 0, round: 0,
-      names: ['你', '阿青', '阿蓝', '阿紫'],
-      aiName: { easy: '阿青(初学)', normal: '阿蓝(进阶)', hard: '阿紫(大师)' } };
-    G.aiLevel = [null, diff, diff, diff]; // 三家 AI 同难度
+      names: ['你', '阿青', '阿蓝', '阿紫'], aiLevel: [null, diff, diff, diff] };
     startRound();
   }
   function startRound() {
@@ -125,12 +120,12 @@
     G.hands = [[], [], [], []]; G.melds = [[], [], [], []]; G.rivers = [[], [], [], []];
     for (let i = 0; i < 4; i++) for (let k = 0; k < 13; k++) G.hands[i].push(G.wall.pop());
     for (let i = 0; i < 4; i++) G.hands[i].sort((a, b) => a - b);
-    G.turn = G.dealer; G.phase = 'draw'; G.last = null; G.claim = null;
-    G.roundWind = 27; // 东
-    G.msg = '第 ' + G.round + ' 局开始，' + SEATS[G.dealer] + ' 做庄';
+    G.turn = G.dealer; G.phase = 'draw'; G.last = null; G.claim = null; G.chiSel = null;
+    G.roundWind = 27;
+    G.msg = '第 ' + G.round + ' 局 · ' + SEATS[G.dealer] + ' 做庄';
     drawTile();
   }
-  function visibleCounts() { // 已见的牌（牌河+副露+自己手牌），用于估算剩余
+  function visibleCounts() {
     const v = new Array(34).fill(0);
     for (let p = 0; p < 4; p++) {
       for (const t of G.rivers[p]) v[t]++;
@@ -140,6 +135,16 @@
     return v;
   }
   function avail() { const v = visibleCounts(); return v.map(x => Math.max(0, 4 - x)); }
+
+  function selfCtx(p) { return { selfDraw: true, roundWind: G.roundWind, seatWind: 27 + ((p - G.dealer + 4) % 4) }; }
+  function gangOptions(p, c) {
+    const res = [];
+    for (let t = 0; t < 34; t++) {
+      if (c[t] === 4) res.push({ t, type: 'angang' });
+      if (c[t] >= 1) { const m = G.melds[p].find(x => x.type === 'peng' && x.tiles[0] === t); if (m) res.push({ t, type: 'jiagang', m }); }
+    }
+    return res;
+  }
 
   function drawTile() {
     if (G.wall.length <= 8) { endRound(null, -1, true); return; }
@@ -155,17 +160,8 @@
       render();
     } else {
       render();
-      setTimeout(() => aiTurn(p), 450);
+      setTimeout(() => aiTurn(p), 500);
     }
-  }
-  function selfCtx(p) { return { selfDraw: true, roundWind: G.roundWind, seatWind: 27 + ((p - G.dealer + 4) % 4) }; }
-  function gangOptions(p, c) {
-    const res = [];
-    for (let t = 0; t < 34; t++) {
-      if (c[t] === 4) res.push({ t, type: 'angang' });
-      if (c[t] >= 1) { const m = G.melds[p].find(x => x.type === 'peng' && x.tiles[0] === t); if (m) res.push({ t, type: 'jiagang', m }); }
-    }
-    return res;
   }
 
   function doDiscard(p, t) {
@@ -182,7 +178,6 @@
   /* ---------- 认领（胡>碰杠>吃） ---------- */
   function resolveClaims() {
     const { t, from } = G.last;
-    // 胡（先收集所有能胡者；玩家优先被询问）
     const rons = [];
     for (let k = 1; k <= 3; k++) {
       const p = (from + k) % 4;
@@ -194,7 +189,6 @@
     }
     if (rons.includes(0)) { askClaim(['ron'], t, from); return; }
     if (rons.length) { doRon(rons[0], t, from); return; }
-    // 碰/杠
     for (let k = 1; k <= 3; k++) {
       const p = (from + k) % 4;
       const c = counts(G.hands[p]);
@@ -207,17 +201,12 @@
         if (claimImproves(p, t, 'peng')) { doPeng(p, t, from); return; }
       }
     }
-    // 吃（仅下家）
     const p = (from + 1) % 4;
-    if (chiOptions(p, t).length) {
-      if (p === 0) { askClaim(['chi'], t, from); return; }
-      const opt = bestChi(p, t);
-      if (opt) { doChi(p, t, from, opt); return; }
-    }
+    if (p === 0 && chiOptions(0, t).length) { askClaim(['chi', 'pass'], t, from); return; }
+    if (p !== 0) { const opt = bestChi(p, t); if (opt) { doChi(p, t, from, opt); return; } }
     G.turn = (from + 1) % 4;
     drawTile();
   }
-  function wantRonAI(p) { return true; } // 有番必胡
   function claimImproves(p, t, type) {
     const c = counts(G.hands[p]);
     const s0 = shanten(c, G.melds[p].length);
@@ -248,53 +237,53 @@
 
   function doRon(p, t, from) {
     G.hands[p].push(t);
-    const i = G.rivers[from].indexOf(t); if (i >= 0) G.rivers[from].splice(i, 1);
+    const i = G.rivers[from].lastIndexOf(t); if (i >= 0) G.rivers[from].splice(i, 1);
     const c = counts(G.hands[p]);
     const f = calcFan(c, G.melds[p], { selfDraw: false, roundWind: G.roundWind, seatWind: 27 + ((p - G.dealer + 4) % 4) });
     endRound({ winner: p, from, selfDraw: false, fan: f.fan, list: f.list }, from);
   }
   function doPeng(p, t, from) {
-    const c = counts(G.hands[p]);
     for (let k = 0; k < 2; k++) { const i = G.hands[p].indexOf(t); G.hands[p].splice(i, 1); }
     G.melds[p].push({ type: 'peng', tiles: [t, t, t], from });
     G.rivers[from].pop();
-    G.claim = null; G.turn = p; G.phase = 'discard'; G.last = null;
-    if (p === 0) { G.msg = '你碰了 ' + TN(t); render(); }
-    else { render(); setTimeout(() => aiDiscard(p), 450); }
+    G.claim = null; G.chiSel = null; G.turn = p; G.phase = 'discard'; G.last = null;
+    if (p === 0) { G.canWinSelf = false; G.canGangSelf = gangOptions(0, counts(G.hands[0])); render(); }
+    else setTimeout(() => aiDiscard(p), 500);
   }
   function doGang(p, t, from) {
     for (let k = 0; k < 3; k++) { const i = G.hands[p].indexOf(t); G.hands[p].splice(i, 1); }
     G.melds[p].push({ type: 'gang', tiles: [t, t, t, t], from });
     G.rivers[from].pop();
-    G.claim = null; G.turn = p; G.last = null; G.phase = 'discard';
+    G.claim = null; G.chiSel = null; G.turn = p; G.last = null; G.phase = 'discard';
     if (G.wall.length <= 8) { endRound(null, -1, true); return; }
     const nt = G.wall.shift();
     G.hands[p].push(nt); G.drawn = nt;
-    if (p === 0) { render(); } else setTimeout(() => aiTurn(p, true), 450);
+    if (p === 0) { G.canWinSelf = false; G.canGangSelf = []; render(); }
+    else setTimeout(() => aiTurn(p, true), 500);
   }
   function doChi(p, t, from, opt) {
     for (const o of opt) { const i = G.hands[p].indexOf(o); G.hands[p].splice(i, 1); }
     G.melds[p].push({ type: 'chi', tiles: [opt[0], opt[1], t].sort((a, b) => a - b), from });
     G.rivers[from].pop();
-    G.claim = null; G.turn = p; G.phase = 'discard'; G.last = null;
-    if (p === 0) render(); else setTimeout(() => aiDiscard(p), 450);
+    G.claim = null; G.chiSel = null; G.turn = p; G.phase = 'discard'; G.last = null;
+    if (p === 0) { G.canWinSelf = false; G.canGangSelf = gangOptions(0, counts(G.hands[0])); render(); }
+    else setTimeout(() => aiDiscard(p), 500);
   }
 
   /* ---------- AI 决策 ---------- */
-  function danger(t, p) { // p 的对手视角：t 打给 p 的危险度
-    let d = 0;
+  function danger(t, p) {
     const mel = G.melds[p].length;
     const w = mel >= 3 ? 3 : mel >= 2 ? 1.8 : mel >= 1 ? 0.8 : 0.25;
     if (!w) return 0;
     const river = G.rivers[p];
-    if (river.includes(t)) return 0; // 现物
+    if (river.includes(t)) return 0;
     let near = 0;
     for (const r of river) {
       if (isHonor(t) || isHonor(r)) { if (r === t) near = 1; continue; }
       if (suitOf(r) === suitOf(t) && Math.abs(r - t) <= 2) near = Math.max(near, Math.abs(r - t) === 1 ? 1 : 0.6);
       if (suitOf(r) === suitOf(t)) near = Math.max(near, 0.3);
     }
-    if (isHonor(t)) { const cnt = river.filter(r => r === t).length; near = cnt ? 0 : 1; }
+    if (isHonor(t)) near = 1;
     return w * (0.5 + near);
   }
   function aiDiscard(p) {
@@ -308,17 +297,14 @@
     for (const t of cands) {
       c[t]--;
       const s = shanten(c, G.melds[p].length);
-      let u = ukeire(c, G.melds[p].length, av);
+      const u = ukeire(c, G.melds[p].length, av);
       let score;
       if (lvl === 'normal') score = -s * 1000 + u;
       else {
         let dg = 0;
         for (let k = 1; k <= 3; k++) dg += danger(t, (p + k) % 4);
-        score = -s * 1000 + u - (s > 0 ? dg * 7 : 0);
-        if (s === 0) { // 听牌：比较听口
-          const waits = E.getWaits(c.slice());
-          score = 100000 + waits.length * 10 - dg * 3;
-        }
+        if (s === 0) score = 100000 + E.getWaits(c.slice()).length * 10 - dg * 3;
+        else score = -s * 1000 + u - dg * 7;
       }
       c[t]++;
       if (score > bestScore) { bestScore = score; bestT = t; }
@@ -333,18 +319,14 @@
       if (f.fan > 0) { endRound({ winner: p, from: -1, selfDraw: true, fan: f.fan, list: f.list }, -1); return; }
     }
     if (!afterGang && G.aiLevel[p] !== 'easy') {
-      const go = gangOptions(p, c);
-      for (const g of go) {
+      for (const g of gangOptions(p, c)) {
         const c2 = c.slice(); c2[g.t] -= (g.type === 'angang' ? 4 : 1);
-        const s0 = shanten(c, G.melds[p].length);
-        const s1 = shanten(c2, G.melds[p].length + 1);
-        if (s1 <= s0) { // 杠后补牌
-          const i = G.hands[p].indexOf(g.t);
+        if (shanten(c2, G.melds[p].length + 1) <= shanten(c, G.melds[p].length)) {
           if (g.type === 'angang') { for (let k = 0; k < 4; k++) G.hands[p].splice(G.hands[p].indexOf(g.t), 1); G.melds[p].push({ type: 'angang', tiles: [g.t, g.t, g.t, g.t], from: p }); }
-          else { G.hands[p].splice(i, 1); g.m.type = 'gang'; g.m.tiles.push(g.t); }
+          else { G.hands[p].splice(G.hands[p].indexOf(g.t), 1); g.m.type = 'gang'; g.m.tiles.push(g.t); }
           if (G.wall.length <= 8) { endRound(null, -1, true); return; }
           G.hands[p].push(G.wall.shift());
-          render(); setTimeout(() => aiTurn(p, true), 450); return;
+          render(); setTimeout(() => aiTurn(p, true), 500); return;
         }
       }
     }
@@ -353,14 +335,14 @@
 
   /* ---------- 结算 ---------- */
   function endRound(win, from, draw) {
-    G.phase = 'over'; G.claim = null;
-    let text = '';
-    if (draw) { text = '荒庄流局'; }
+    G.phase = 'over'; G.claim = null; G.chiSel = null;
+    let text;
+    if (draw) text = '荒庄流局';
     else {
       const w = win.winner, pay = 8 + win.fan;
       if (win.selfDraw) { for (let p = 0; p < 4; p++) if (p !== w) G.scores[p] -= pay; G.scores[w] += pay * 3; }
       else { G.scores[from] -= pay; G.scores[w] += pay; }
-      text = SEATS[w] + (win.selfDraw ? ' 自摸' : ' 胡牌（' + SEATS[from] + ' 点炮）') + ' ' + win.fan + ' 番';
+      text = SEATS[w] + (w === 0 ? '（你）' : '') + (win.selfDraw ? ' 自摸 ' : ' 胡牌 ') + win.fan + ' 番' + (win.selfDraw ? '' : '（' + SEATS[from] + ' 点炮）');
       G.lastWin = win;
     }
     G.overText = text;
@@ -368,66 +350,103 @@
     render();
   }
 
-  /* ---------- 渲染 ---------- */
+  /* ---------- 渲染（雀魂风格） ---------- */
   function faceSVG(t) { return (global.MJFACE ? global.MJFACE(t) : '<span class="fb">' + TN(t) + '</span>'); }
   function tileHTML(t, cls, onclick) {
     return '<div class="tile bt ' + (cls || '') + '" ' + (onclick ? 'onclick="' + onclick + '"' : '') + '>' + faceSVG(t) + '</div>';
   }
-  function meldHTML(m, hidden) {
-    if (m.type === 'angang' || hidden) return m.tiles.map(() => '<div class="tile bt back sm"></div>').join('');
-    return m.tiles.map(t => tileHTML(t, 'sm')).join('');
-  }
   function riverHTML(p) {
-    return G.rivers[p].map((t, i) => '<div class="tile bt rvt' + (G.last && G.last.from === p && i === G.rivers[p].length - 1 ? ' hot' : '') + '">' + faceSVG(t) + '</div>').join('');
+    const r = G.rivers[p];
+    let s = '';
+    for (let i = 0; i < r.length; i++) {
+      s += '<div class="tile bt rvt' + (G.last && G.last.from === p && i === r.length - 1 ? ' hot' : '') + '">' + faceSVG(r[i]) + '</div>';
+
+    }
+    return s;
+  }
+  function meldHTML(m, own) {
+    if (!own && m.type === 'angang') {
+      const t = m.tiles[0];
+      return '<span class="mg">' + tileHTML(t, 'sm') + '<div class="tile bt back sm"></div><div class="tile bt back sm"></div>' + tileHTML(t, 'sm') + '</span>';
+    }
+    return '<span class="mg">' + m.tiles.map(t => tileHTML(t, 'sm')).join('') + '</span>';
   }
   function oppBlock(p, pos) {
-    const lv = { easy: '初学', normal: '进阶', hard: '大师' }[G.aiLevel[p]];
+    const backs = Math.min(G.hands[p].length, 13);
+    let bk = '';
+    if (pos === 'top') { for (let i = 0; i < backs; i++) bk += '<div class="tile bt back tb"></div>'; }
+    else { for (let i = 0; i < backs; i++) bk += '<div class="tile bt back tbv"></div>'; }
     return '<div class="opp ' + pos + '">' +
-      '<div class="oinfo"><b>' + G.names[p] + '</b><span class="lvtag">' + lv + '</span>' +
-      (G.turn === p && G.phase !== 'over' ? '<span class="think">思考中…</span>' : '') +
+      '<div class="seatbadge"><b>' + G.names[p] + '</b><span class="lvtag">' + LVCN[G.aiLevel[p]] + '</span>' +
+      (G.turn === p && G.phase !== 'over' ? '<span class="think">思考…</span>' : '') +
       '<span class="sc">' + G.scores[p] + '</span></div>' +
+      '<div class="obacks' + (pos === 'top' ? '' : ' vert') + '">' + bk + '</div>' +
       '<div class="omelds">' + G.melds[p].map(m => meldHTML(m)).join('') + '</div>' +
-      '<div class="oriver">' + riverHTML(p) + '</div></div>';
+      '</div>';
   }
   function render() {
     const root = document.getElementById('battleRoot');
     if (!root || !G) return;
-    let h = '';
-    h += '<div class="bhead"><span>第 ' + G.round + ' 局 · 庄:' + SEATS[G.dealer] + ' · 难度:' + { easy: '初学', normal: '进阶', hard: '大师' }[G.diff] + '</span>' +
-      '<span>余牌 ' + G.wall.length + '</span><span class="bmsg">' + (G.msg || '') + '</span>' +
-      '<button id="bQuit" class="ghost">☰ 主菜单</button></div>';
-    h += '<div class="btable">';
-    h += oppBlock(2, 'top');
-    h += '<div class="bmid">' + oppBlock(3, 'left') + '<div class="bcenter"><div class="walln">' + G.wall.length + '<small>余牌</small></div></div>' + oppBlock(1, 'right') + '</div>';
-    // 自己
-    h += '<div class="bme">';
-    h += '<div class="mmelds">' + G.melds[0].map(m => m.tiles.map(t => tileHTML(t, 'sm')).join('')).join('') + '</div>';
-    h += '<div class="mriver">' + riverHTML(0) + '</div>';
+    let h = '<div class="bhead"><span class="bh-l">第 ' + G.round + ' 局 · 庄 ' + SEATS[G.dealer] + ' · ' + LVCN[G.diff] + '</span>' +
+      '<span class="bmsg">' + (G.msg || '') + '</span>' +
+      '<button id="bQuit" class="ghost bh-r">☰ 菜单</button></div>';
+    h += '<div class="felt"><div class="tablegrid">';
+    h += '<div class="cell c-t">' + oppBlock(2, 'top') + '</div>';
+    h += '<div class="cell c-l">' + oppBlock(3, 'left') + '</div>';
+    h += '<div class="cell c-cc"><div class="sq">' +
+      '<div class="rz rz-t"><div class="river">' + riverHTML(2) + '</div></div>' +
+      '<div class="rz rz-l"><div class="river">' + riverHTML(3) + '</div></div>' +
+      '<div class="rz rz-r"><div class="river">' + riverHTML(1) + '</div></div>' +
+      '<div class="rz rz-b"><div class="river">' + riverHTML(0) + '</div></div>' +
+      '<div class="walln">' + G.wall.length + '<small>余牌</small></div></div></div>';
+    h += '<div class="cell c-r">' + oppBlock(1, 'right') + '</div>';
+    // 我方区
+    h += '<div class="cell c-b"><div class="bme">';
+    h += '<div class="btop"><div class="mmelds">' + G.melds[0].map(m => meldHTML(m, true)).join('') + '</div></div>';
     h += '<div class="mhand">';
     const hand = G.hands[0].slice();
-    if (G.drawn >= 0 && G.phase === 'discard' && G.turn === 0) {
+    const myTurn = G.phase === 'discard' && G.turn === 0;
+    if (myTurn && G.drawn >= 0) {
       const i = hand.lastIndexOf(G.drawn);
-      if (i >= 0) { const t = hand.splice(i, 1)[0]; h += hand.map(t => tileHTML(t, '', 'MB.play(' + t + ')')).join('') + '<span class="gap"></span>' + tileHTML(t, 'drawn', 'MB.play(' + t + ')'); }
-      else h += hand.map(t => tileHTML(t, '', 'MB.play(' + t + ')')).join('');
-    } else h += hand.map(t => tileHTML(t, G.turn === 0 && G.phase === 'discard' ? 'canplay' : '')).join('');
-    h += '</div>';
-    // 动作条
-    let acts = '';
-    if (G.phase === 'discard' && G.turn === 0) {
-      if (G.canWinSelf) acts += '<button class="abtn win" id="aWin">胡（自摸）</button>';
-      for (const g of (G.canGangSelf || [])) acts += '<button class="abtn" id="aGang" data-t="' + g.t + '" data-type="' + g.type + '">杠</button>';
-    }
-    if (G.phase === 'claim' && G.claim && G.claim.acts.includes('ron')) acts += '<button class="abtn win" id="aRon">胡 ' + TN(G.claim.t) + '</button>';
-    if (G.claim && G.claim.acts.includes('peng')) acts += '<button class="abtn" id="aPeng">碰 ' + TN(G.claim.t) + '</button>';
-    if (G.claim && G.claim.acts.includes('gang')) acts += '<button class="abtn" id="aGangP">杠 ' + TN(G.claim.t) + '</button>';
-    if (G.claim && G.claim.acts.includes('chi')) acts += '<button class="abtn" id="aChi">吃 ' + TN(G.claim.t) + '</button>';
-    if (G.claim) acts += '<button class="abtn pass" id="aPass">过</button>';
-    h += '<div class="actbar">' + acts + '</div>';
+      if (i >= 0) { const t = hand.splice(i, 1)[0]; h += hand.map(x => tileHTML(x, 'canplay', 'MB.play(' + x + ')')).join('') + '<span class="gap"></span>' + tileHTML(t, 'drawn canplay', 'MB.play(' + t + ')'); }
+      else h += hand.map(x => tileHTML(x, 'canplay', 'MB.play(' + x + ')')).join('');
+    } else h += hand.map(x => tileHTML(x, '')).join('');
     h += '</div></div>';
+    // 右侧浮层操作按钮（雀魂式）
+    const acts = [];
+    if (myTurn) {
+      if (G.canWinSelf) acts.push(['ron', '胡']);
+      for (const g of (G.canGangSelf || [])) acts.push(['selfgang|' + g.t + '|' + g.type, '杠']);
+    }
+    if (G.claim) {
+      if (G.claim.acts.includes('ron')) acts.push(['ron', '胡']);
+      if (G.claim.acts.includes('peng')) acts.push(['peng', '碰']);
+      if (G.claim.acts.includes('gang')) acts.push(['gangp', '杠']);
+      if (G.claim.acts.includes('chi')) acts.push(['chi', '吃']);
+    }
+    if (acts.length) {
+      h += '<div class="actFloat">' + acts.map(a => {
+        const k = a[0].split('|')[0];
+        const cls = (k === 'gangp' || k === 'selfgang') ? 'gang' : k;
+        return '<button class="abig ' + cls + '" data-a="' + a[0] + '">' + a[1] + '</button>';
+      }).join('') + (G.claim ? '<button class="abig pass" data-a="pass">过</button>' : '') + '</div>';
+    }
+    h += '</div>';
+    // 吃牌组合选择弹窗
+    if (G.chiSel) {
+      h += '<div class="overlay chiOv"><div class="ovbox"><h2>选择吃法</h2><div class="chiOpts">';
+      G.chiSel.forEach((o, i) => {
+        h += '<button class="chiOpt" data-i="' + i + '">' + o.map(t => tileHTML(t, 'sm')).join('') +
+          '<span class="plus">+</span>' + tileHTML(G.claim.t, 'sm') + '</button>';
+      });
+      h += '</div><button class="abtn pass" id="chiCancel">取消</button></div></div>';
+    }
+    h += '</div></div>';
+    // 结算
     if (G.phase === 'over') {
       h += '<div class="overlay"><div class="ovbox"><h2>' + G.overText + '</h2>';
       if (G.lastWin) h += '<div class="fanlist">' + G.lastWin.list.join('　') + '</div>';
-      h += '<div class="scorerow">' + G.names.map((n, i) => '<span>' + n + ' <b>' + G.scores[i] + '</b></span>').join('') + '</div>';
+      h += '<div class="scorerow">' + G.names.map((n, i) => '<span' + (i === 0 ? ' class="me"' : '') + '>' + n + ' <b>' + G.scores[i] + '</b></span>').join('') + '</div>';
       h += '<div><button id="bNext">继续下一局 →</button> <button class="ghost" id="bBack">退出到主菜单</button></div></div></div>';
     }
     root.innerHTML = h;
@@ -435,27 +454,32 @@
     on('bQuit', () => quitToMenu());
     on('bNext', () => { G.lastWin = null; startRound(); });
     on('bBack', () => quitToMenu());
-    on('aWin', () => { const c = counts(G.hands[0]); const f = calcFan(c, G.melds[0], selfCtx(0)); endRound({ winner: 0, from: -1, selfDraw: true, fan: f.fan, list: f.list }, -1); });
-    on('aRon', () => doRon(0, G.claim.t, G.claim.from));
-    on('aPeng', () => doPeng(0, G.claim.t, G.claim.from));
-    on('aGangP', () => doGang(0, G.claim.t, G.claim.from));
-    on('aChi', () => { const o = chiOptions(0, G.claim.t); doChi(0, G.claim.t, G.claim.from, o[0]); });
-    on('aPass', () => { G.claim = null; resolveAfterPass(); });
-    const ag = document.getElementById('aGang');
-    if (ag) ag.onclick = () => selfGang(ag.dataset.t, ag.dataset.type);
+    root.querySelectorAll('.abig').forEach(b => b.onclick = () => {
+      const a = b.dataset.a;
+      if (a === 'ron') {
+        if (G.claim) doRon(0, G.claim.t, G.claim.from);
+        else { const c = counts(G.hands[0]); const f = calcFan(c, G.melds[0], selfCtx(0)); endRound({ winner: 0, from: -1, selfDraw: true, fan: f.fan, list: f.list }, -1); }
+      } else if (a === 'peng') doPeng(0, G.claim.t, G.claim.from);
+      else if (a === 'gangp') doGang(0, G.claim.t, G.claim.from);
+      else if (a === 'chi') {
+        const opts = chiOptions(0, G.claim.t);
+        if (opts.length > 1) { G.chiSel = opts; render(); }
+        else doChi(0, G.claim.t, G.claim.from, opts[0]);
+      } else if (a === 'pass') { G.claim = null; G.chiSel = null; resolveAfterPass(); }
+      else if (a.startsWith('selfgang|')) selfGang(a.split('|')[1], a.split('|')[2]);
+    });
+    root.querySelectorAll('.chiOpt').forEach(b => b.onclick = () => doChi(0, G.claim.t, G.claim.from, G.chiSel[+b.dataset.i]));
+    on('chiCancel', () => { G.chiSel = null; render(); });
   }
   function resolveAfterPass() {
     const { t, from } = G.last;
-    // 玩家过掉后，继续检查 AI 认领
     for (let k = 1; k <= 3; k++) {
-      const p = (from + k) % 4;
-      if (p === 0) continue;
+      const p = (from + k) % 4; if (p === 0) continue;
       const c = counts(G.hands[p]); c[t]++;
       if (E.canWin(c)) { const f = calcFan(c, G.melds[p], { selfDraw: false, roundWind: G.roundWind, seatWind: 27 + ((p - G.dealer + 4) % 4) }); if (f.fan > 0) { doRon(p, t, from); return; } }
     }
     for (let k = 1; k <= 3; k++) {
-      const p = (from + k) % 4;
-      if (p === 0) continue;
+      const p = (from + k) % 4; if (p === 0) continue;
       const c = counts(G.hands[p]);
       if (c[t] >= 3 && claimImproves(p, t, 'gang')) { doGang(p, t, from); return; }
       if (c[t] >= 2 && claimImproves(p, t, 'peng')) { doPeng(p, t, from); return; }
@@ -467,12 +491,11 @@
   }
   function selfGang(t, type) {
     t = +t;
-    const c = counts(G.hands[0]);
     if (type === 'angang') { for (let k = 0; k < 4; k++) G.hands[0].splice(G.hands[0].indexOf(t), 1); G.melds[0].push({ type: 'angang', tiles: [t, t, t, t], from: 0 }); }
     else { const m = G.melds[0].find(x => x.type === 'peng' && x.tiles[0] === t); G.hands[0].splice(G.hands[0].indexOf(t), 1); m.type = 'gang'; m.tiles.push(t); }
     if (G.wall.length <= 8) { endRound(null, -1, true); return; }
     G.hands[0].push(G.wall.shift()); G.drawn = G.hands[0][G.hands[0].length - 1];
-    G.canGangSelf = [];
+    G.canGangSelf = []; G.canWinSelf = false;
     render();
   }
   function play(t) {
@@ -481,8 +504,8 @@
   }
   function quitToMenu() {
     G = null;
-    document.getElementById('battleRoot').style.display = 'none';
-    document.getElementById('battleRoot').innerHTML = '';
+    const r = document.getElementById('battleRoot');
+    r.style.display = 'none'; r.innerHTML = '';
     document.getElementById('startPanel').style.display = '';
     document.body.classList.remove('battling');
   }
@@ -501,8 +524,7 @@
     const go = document.getElementById('battleGo');
     if (go) go.onclick = () => {
       document.getElementById('startPanel').style.display = 'none';
-      const root = document.getElementById('battleRoot');
-      root.style.display = '';
+      document.getElementById('battleRoot').style.display = '';
       document.body.classList.add('battling');
       newGame(bdiff);
     };
