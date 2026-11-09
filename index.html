@@ -137,11 +137,15 @@
   .pbadge.b-left { top: 13px; left: 14px; }
   .pbadge.b-right { top: 34%; right: 14px; }
   .pbadge.b-me { bottom: calc(8% + var(--bw,50px)*1.34 + 10px); left: 22px; }
-  .omelds { position: absolute; z-index: 3; display: flex; gap: 2px; flex-wrap: wrap; max-width: 170px; }
-  .omelds.m2 { top: 74px; right: 10px; justify-content: flex-end; }
-  .omelds.m3 { top: 24%; left: 10px; }
-  .omelds.m1 { top: calc(34% + 84px); right: 10px; justify-content: flex-end; }
-  /* 副露牌随各家视角旋转（对家180°、左家90°、右家-90°），均为横排 */
+  .omelds { position: absolute; z-index: 3; display: flex; gap: 3px; }
+  /* 副露放各家左手边（该家视角）：左家=屏幕上方、右家=屏幕下方、对家=屏幕右侧 */
+  .omelds.m2 { top: 74px; right: 14px; flex-direction: row; }
+  .omelds.m2 .mg { flex-direction: row-reverse; }
+  .omelds.m3 { bottom: 76%; left: 12px; flex-direction: column-reverse; }
+  .omelds.m3 .mg { flex-direction: column; }
+  .omelds.m1 { top: 66%; right: 12px; flex-direction: column; }
+  .omelds.m1 .mg { flex-direction: column-reverse; }
+  /* 副露牌随各家视角旋转：对家180°、左家90°、右家-90° */
   .omelds.m2 .tile.bt.sm svg { transform: rotate(180deg); }
   .omelds.m3 .tile.bt.sm, .omelds.m1 .tile.bt.sm { width: calc(var(--bw,42px)*.88); height: calc(var(--bw,42px)*.66); position: relative; overflow: hidden; margin: 0; }
   .omelds.m3 .tile.bt.sm svg { position: absolute; left: 50%; top: 50%; width: calc(var(--bw,42px)*.66); height: calc(var(--bw,42px)*.88); transform: translate(-50%,-50%) rotate(90deg); }
@@ -235,7 +239,7 @@
 <body>
 <div class="wrap">
   <h1>? 麻将多面听牌挑战</h1>
-  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v4.7</span></div>
+  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v4.8</span></div>
 
   <div id="startPanel" class="panel center">
     <div class="modeSel"><button id="modeQuiz" class="active">听牌练习<small>多面听测验</small></button><button id="modeBattle">人机对战<small>1 打 3 · 国标简化</small></button></div><p id="quizIntro" style="font-size:16px;margin-bottom:6px;">每局 <b style="color:var(--gold)">8 题</b>，含经典多面听牌型，限时作答评级。</p>
@@ -295,7 +299,7 @@
 </div>
 
 <script src="engine.js?v=7"></script>
-<script src="battle.js?v=9"></script>
+<script src="battle.js?v=10"></script>
 <script>
 (function () {
   const E = window.MahjongEngine;
