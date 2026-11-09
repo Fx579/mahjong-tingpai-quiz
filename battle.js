@@ -441,11 +441,14 @@
       if (G.claim.acts.includes('chi')) acts.push(['chi', '吃']);
     }
     if (acts.length) {
-      h += '<div class="actFloat">' + acts.map(a => {
+      const slot = { chi: 0, peng: 1, gang: 2, ron: 3 };
+      const arr = [];
+      for (const a of acts) {
         const k = a[0].split('|')[0];
         const cls = (k === 'gangp' || k === 'selfgang') ? 'gang' : k;
-        return '<button class="abig ' + cls + '" data-a="' + a[0] + '">' + a[1] + '</button>';
-      }).join('') + (G.claim ? '<button class="abig pass" data-a="pass">过</button>' : '') + '</div>';
+        arr[slot[cls]] = (arr[slot[cls]] || '') + '<button class="abig ' + cls + '" data-a="' + a[0] + '">' + a[1] + '</button>';
+      }
+      h += '<div class="actFloat">' + arr.filter(Boolean).join('') + (G.claim ? '<button class="abig pass" data-a="pass">过</button>' : '') + '</div>';
     }
     h += '</div>';
     // 吃牌组合选择弹窗
