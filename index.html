@@ -138,12 +138,12 @@
   .pbadge.b-right { top: 34%; right: 14px; }
   .pbadge.b-me { bottom: calc(8% + var(--bw,50px)*1.34 + 10px); left: 22px; }
   .omelds { position: absolute; z-index: 3; display: flex; gap: 3px; }
-  /* 副露放各家左手边（该家视角）：左家=屏幕上方、右家=屏幕下方、对家=屏幕右侧 */
-  .omelds.m2 { top: 74px; right: 14px; flex-direction: row; }
+  /* 副露放各家右手边（该家视角）：左家=屏幕下方、右家=屏幕上方、对家=屏幕左侧 */
+  .omelds.m2 { top: 80px; left: 14px; flex-direction: row-reverse; }
   .omelds.m2 .mg { flex-direction: row-reverse; }
-  .omelds.m3 { bottom: 76%; left: 12px; flex-direction: column-reverse; }
+  .omelds.m3 { top: 66%; left: 12px; flex-direction: column; }
   .omelds.m3 .mg { flex-direction: column; }
-  .omelds.m1 { top: 66%; right: 12px; flex-direction: column; }
+  .omelds.m1 { bottom: 74%; right: 12px; flex-direction: column-reverse; }
   .omelds.m1 .mg { flex-direction: column-reverse; }
   /* 副露牌随各家视角旋转：对家180°、左家90°、右家-90° */
   .omelds.m2 .tile.bt.sm svg { transform: rotate(180deg); }
@@ -204,16 +204,22 @@
   .tile.bt.drawn { transform: translateY(-7px); }
   .tile.bt.canplay { cursor: pointer; }
   .tile.bt.canplay:hover { transform: translateY(-7px); box-shadow: 0 0 0 2px var(--gold), 0 4px 8px rgba(0,0,0,.5); }
-  .actFloat { position: absolute; right: 10px; bottom: calc(var(--bw, 50px) * 1.34 + 24px); display: flex; flex-direction: column; gap: 9px; z-index: 5; }
-  .abig { width: 64px; height: 64px; border-radius: 50%; border: 3px solid rgba(255,255,255,.75); font-size: 24px; font-weight: 900;
-    cursor: pointer; color: #fff; text-shadow: 0 2px 3px rgba(0,0,0,.6); box-shadow: 0 4px 14px rgba(0,0,0,.55), inset 0 -6px 12px rgba(0,0,0,.28);
-    animation: pop .18s ease-out; }
+  /* 雀魂式操作气泡：位于自己手牌正上方，吃|碰|杠|胡 固定槽位，带下箭头 */
+  .actFloat { position: absolute; left: 50%; bottom: calc(8% + var(--bw, 50px) * 1.34 + 16px); transform: translateX(-50%);
+    display: flex; align-items: flex-end; gap: 18px; z-index: 8; }
+  .abig { position: relative; border: none; cursor: pointer; font-family: inherit; font-weight: 900; font-size: 22px;
+    padding: 9px 28px; border-radius: 10px; color: #26374a;
+    background: linear-gradient(180deg, #fffef4 0%, #f0e6c4 100%);
+    box-shadow: 0 4px 12px rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,255,255,.8); animation: pop .16s ease-out; }
+  .abig::after { content: ''; position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%);
+    border: 8px solid transparent; border-top: 8px solid #f0e6c4; border-bottom: 0; }
+  .abig:hover { filter: brightness(1.05); }
   @keyframes pop { from { transform: scale(.5); opacity: 0; } }
-  .abig.ron { background: radial-gradient(circle at 35% 30%, #ffe08a, #e0a52a 70%); color:#7a2a12; }
-  .abig.peng { background: radial-gradient(circle at 35% 30%, #ffab7a, #e8562a 70%); }
-  .abig.gang { background: radial-gradient(circle at 35% 30%, #c99bff, #7d3bd6 70%); }
-  .abig.chi { background: radial-gradient(circle at 35% 30%, #7db8ff, #2f6fd0 70%); }
-  .abig.pass { width: 46px; height: 46px; font-size: 16px; background: radial-gradient(circle at 35% 30%, #9aa7ad, #5b6a72 70%); align-self: flex-end; }
+  .abig.ron { background: linear-gradient(180deg, #ffe98d 0%, #f2b32c 100%); color: #a52a12; }
+  .abig.ron::after { border-top-color: #f2b32c; }
+  .abig.pass { font-size: 15px; font-weight: 700; padding: 6px 16px; color: #ffe9a8; background: rgba(10,12,16,.8);
+    box-shadow: 0 3px 8px rgba(0,0,0,.45); }
+  .abig.pass::after { display: none; }
   .overlay { position: absolute; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 9; }
   .ovbox { background: linear-gradient(180deg, #17492a, #0e3018); border: 1px solid var(--gold); border-radius: 14px;
     padding: 20px 28px; text-align: center; color: #fff; max-width: 92%; }
@@ -229,8 +235,8 @@
   .fb { font-size: 12px; }
   body.battling { overflow: hidden; }
   @media (orientation: landscape) and (max-height: 640px) {
-    #battleRoot { --bw: 34px; --rw: 24px; } .actFloat { bottom: 64px; }
-    .abig { width: 52px; height: 52px; font-size: 20px; } .abig.pass { width: 38px; height: 38px; }
+    #battleRoot { --bw: 34px; --rw: 24px; } .actFloat { bottom: calc(8% + var(--bw) * 1.34 + 10px); gap: 10px; }
+    .abig { font-size: 16px; padding: 6px 16px; } .abig.pass { font-size: 12px; padding: 4px 10px; }
   }
   @media (orientation: portrait) and (max-width: 640px) { #battleRoot { --bw: 26px; --rw: min(30px, 8.6vw); }
     .rotHint { display: inline; } .mhand { gap: 1px; } }
@@ -239,7 +245,7 @@
 <body>
 <div class="wrap">
   <h1>? 麻将多面听牌挑战</h1>
-  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v4.8</span></div>
+  <div class="sub">给出听牌牌型，选出所有能胡的牌（多选题）· 引擎按标准型 / 七对 / 十三幺判定 · <span id="verTag" style="opacity:.7">v4.9</span></div>
 
   <div id="startPanel" class="panel center">
     <div class="modeSel"><button id="modeQuiz" class="active">听牌练习<small>多面听测验</small></button><button id="modeBattle">人机对战<small>1 打 3 · 国标简化</small></button></div><p id="quizIntro" style="font-size:16px;margin-bottom:6px;">每局 <b style="color:var(--gold)">8 题</b>，含经典多面听牌型，限时作答评级。</p>
@@ -299,7 +305,7 @@
 </div>
 
 <script src="engine.js?v=7"></script>
-<script src="battle.js?v=10"></script>
+<script src="battle.js?v=11"></script>
 <script>
 (function () {
   const E = window.MahjongEngine;
