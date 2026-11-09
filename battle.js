@@ -1,4 +1,4 @@
-﻿﻿/* 麻将人机对战：1 玩家 + 3 AI，国标简化规则（吃碰杠胡、无番不胡、8 分为底）
+﻿﻿﻿﻿/* 麻将人机对战：1 玩家 + 3 AI，国标简化规则（吃碰杠胡、无番不胡、8 分为底）
    AI 纯逻辑分析：向听数 + 进张量 + 危险度（基于对手牌河与副露），不吃牌山。
    UI 参考雀魂：绿色牌桌、四家牌河环绕、右侧浮层操作按钮、吃牌组合选择弹窗。 */
 (function (global) {
@@ -418,8 +418,8 @@
     h += '<div class="mhand">';
     const hand = G.hands[0].slice();
     const myTurn = G.phase === 'discard' && G.turn === 0;
-    if (myTurn && G.drawn >= 0) {
-      const i = hand.lastIndexOf(G.drawn);
+    if (myTurn) {
+      const i = G.drawn >= 0 ? hand.lastIndexOf(G.drawn) : -1;
       if (i >= 0) {
         const t = hand.splice(i, 1)[0];
         h += hand.map(x => tileHTML(x, 'canplay', 'MB.play(' + x + ')', '')).join('') +
