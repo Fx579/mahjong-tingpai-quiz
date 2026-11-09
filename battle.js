@@ -389,14 +389,15 @@
     if (!root || !G) return;
     let h = '<div class="bhead"><span class="bh-l">第 ' + G.round + ' 局 · 庄 ' + SEATS[G.dealer] + ' · ' + LVCN[G.diff] + '</span>' +
       '<span class="bmsg">' + (G.msg || '') + '</span>' +
+      '<span class="rotHint">↻ 建议横屏游玩</span>' +
       '<button id="bQuit" class="ghost bh-r">☰ 菜单</button></div>';
     h += '<div class="felt"><div class="tablegrid">';
     h += '<div class="cell c-t">' + oppBlock(2, 'top') + '</div>';
     h += '<div class="cell c-l">' + oppBlock(3, 'left') + '</div>';
     h += '<div class="cell c-cc"><div class="sq">' +
       '<div class="rz rz-t"><div class="river">' + riverHTML(2) + '</div></div>' +
-      '<div class="rz rz-l"><div class="river">' + riverHTML(3) + '</div></div>' +
-      '<div class="rz rz-r"><div class="river">' + riverHTML(1) + '</div></div>' +
+      '<div class="rz rz-l"><div class="river vert">' + riverHTML(3) + '</div></div>' +
+      '<div class="rz rz-r"><div class="river vert rev">' + riverHTML(1) + '</div></div>' +
       '<div class="rz rz-b"><div class="river">' + riverHTML(0) + '</div></div>' +
       '<div class="walln">' + G.wall.length + '<small>余牌</small></div></div></div>';
     h += '<div class="cell c-r">' + oppBlock(1, 'right') + '</div>';
