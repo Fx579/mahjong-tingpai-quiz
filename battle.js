@@ -1,4 +1,4 @@
-﻿﻿﻿﻿/* 麻将人机对战：1 玩家 + 3 AI，国标简化规则（吃碰杠胡、无番不胡、8 分为底）
+/* 麻将人机对战：1 玩家 + 3 AI，国标简化规则（吃碰杠胡、无番不胡、8 分为底）
    AI 纯逻辑分析：向听数 + 进张量 + 危险度（基于对手牌河与副露），不吃牌山。
    UI 参考雀魂：绿色牌桌、四家牌河环绕、右侧浮层操作按钮、吃牌组合选择弹窗。 */
 (function (global) {
@@ -155,7 +155,7 @@
     G.phase = 'discard';
     if (p === 0) {
       const c = counts(G.hands[0]);
-      G.canWinSelf = E.canWin(c) && calcFan(c, G.melds[0], selfCtx(0)).fan > 0;
+      G.canWinSelf = E.canWin(c, G.melds[0].length) && calcFan(c, G.melds[0], selfCtx(0)).fan > 0;
       G.canGangSelf = gangOptions(0, c);
       render();
     } else {
@@ -182,7 +182,7 @@
     for (let k = 1; k <= 3; k++) {
       const p = (from + k) % 4;
       const c = counts(G.hands[p]); c[t]++;
-      if (E.canWin(c)) {
+      if (E.canWin(c, G.melds[p].length)) {
         const f = calcFan(c, G.melds[p], { selfDraw: false, roundWind: G.roundWind, seatWind: 27 + ((p - G.dealer + 4) % 4) });
         if (f.fan > 0) rons.push(p);
       }
@@ -303,7 +303,7 @@
       else {
         let dg = 0;
         for (let k = 1; k <= 3; k++) dg += danger(t, (p + k) % 4);
-        if (s === 0) score = 100000 + E.getWaits(c.slice()).length * 10 - dg * 3;
+        if (s === 0) score = 100000 + E.getWaits(c.slice(), G.melds[p].length).length * 10 - dg * 3;
         else score = -s * 1000 + u - dg * 7;
       }
       c[t]++;
@@ -314,7 +314,7 @@
   function aiTurn(p, afterGang) {
     if (G.phase !== 'discard') return;
     const c = counts(G.hands[p]);
-    if (E.canWin(c)) {
+    if (E.canWin(c, G.melds[p].length)) {
       const f = calcFan(c, G.melds[p], selfCtx(p));
       if (f.fan > 0) { endRound({ winner: p, from: -1, selfDraw: true, fan: f.fan, list: f.list }, -1); return; }
     }
@@ -442,13 +442,14 @@
     }
     if (acts.length) {
       const slot = { chi: 0, peng: 1, gang: 2, ron: 3 };
+      const EN = { chi: 'CHI', peng: 'PON', gang: 'KAN', ron: 'RON' };
       const arr = [];
       for (const a of acts) {
         const k = a[0].split('|')[0];
         const cls = (k === 'gangp' || k === 'selfgang') ? 'gang' : k;
-        arr[slot[cls]] = (arr[slot[cls]] || '') + '<button class="abig ' + cls + '" data-a="' + a[0] + '">' + a[1] + '</button>';
+        arr[slot[cls]] = (arr[slot[cls]] || '') + '<button class="abig ' + cls + '" data-a="' + a[0] + '">' + a[1] + '<i>' + EN[cls] + '</i></button>';
       }
-      h += '<div class="actFloat">' + arr.filter(Boolean).join('') + (G.claim ? '<button class="abig pass" data-a="pass">过</button>' : '') + '</div>';
+      h += '<div class="actFloat">' + arr.filter(Boolean).join('') + (G.claim ? '<button class="abig pass" data-a="pass">过<i>PASS</i></button>' : '') + '</div>';
     }
     h += '</div>';
     // 吃牌组合选择弹窗
@@ -495,7 +496,7 @@
     for (let k = 1; k <= 3; k++) {
       const p = (from + k) % 4; if (p === 0) continue;
       const c = counts(G.hands[p]); c[t]++;
-      if (E.canWin(c)) { const f = calcFan(c, G.melds[p], { selfDraw: false, roundWind: G.roundWind, seatWind: 27 + ((p - G.dealer + 4) % 4) }); if (f.fan > 0) { doRon(p, t, from); return; } }
+      if (E.canWin(c, G.melds[p].length)) { const f = calcFan(c, G.melds[p], { selfDraw: false, roundWind: G.roundWind, seatWind: 27 + ((p - G.dealer + 4) % 4) }); if (f.fan > 0) { doRon(p, t, from); return; } }
     }
     for (let k = 1; k <= 3; k++) {
       const p = (from + k) % 4; if (p === 0) continue;
