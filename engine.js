@@ -87,13 +87,15 @@
     return total === 14 && hasPair;
   }
 
-  function canWin(counts) {
+  function canWin(counts, melds) {
+    const m = melds || 0;
     let total = 0;
     for (let i = 0; i < 34; i++) {
       if (counts[i] < 0 || counts[i] > 4) return false;
       total += counts[i];
     }
-    if (total !== 14) return false;
+    if (total !== 14 - 3 * m) return false;
+    if (m > 0) return winStandard(counts); // 有副露时七对/十三幺不成立
     return winStandard(counts) || winSevenPairs(counts) || winThirteenOrphans(counts);
   }
 
@@ -152,13 +154,14 @@
 
   /* ---------- 听牌 / 多面听 ---------- */
 
-  // 13 张牌，返回所有能胡的牌（听牌张）
-  function getWaits(counts13) {
+  // 13 张牌（含副露时为非副露的 13-3m 张），返回所有能胡的牌（听牌张）
+  function getWaits(counts13, melds) {
+    const m = melds || 0;
     const waits = [];
     for (let t = 0; t < 34; t++) {
       if (counts13[t] >= 4) continue;
       counts13[t]++;
-      if (canWin(counts13)) waits.push(t);
+      if (canWin(counts13, m)) waits.push(t);
       counts13[t]--;
     }
     return waits;
